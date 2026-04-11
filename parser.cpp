@@ -1,3 +1,4 @@
+#include <iostream>
 #include "parser.h"
 #include <stdexcept>
 
@@ -18,9 +19,8 @@ Token consume(const std::vector<Token>& tokens) {
 Token expect(const std::vector<Token>& tokens, TokenType type) {
     Token t = consume(tokens);
     if (t.type != type) {
-        throw std::runtime_error(
-            "Ошибка: неожиданный токен: " + t.value
-        );
+        std::cerr << "Ошибка: неожиданный токен: " << t.value << std::endl;
+        exit(1);
     }
     return t;
 }
@@ -62,5 +62,6 @@ Node parse(const std::vector<Token>& tokens) {
         return parseVarDecl(tokens);
     }
 
-    throw std::runtime_error("Неизвестная конструкция");
+    std::cerr << "Неизвестная конструкция" << std::endl;
+    exit(1);
 }

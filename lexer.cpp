@@ -1,3 +1,4 @@
+#include <iostream>
 #include "lexer.h"
 #include <cctype>
 #include <stdexcept>
@@ -77,9 +78,8 @@ std::vector<Token> tokenize(const std::string& code) {
             case '[': tokens.push_back({LBRACKET,  "["}); break;
             case ']': tokens.push_back({RBRACKET,  "]"}); break;
             default:
-                throw std::runtime_error(
-                    std::string("Неизвестный символ: ") + code[i]
-                );
+                std::cerr << "Неизвестный символ: " << code[i] << std::endl;
+                exit(1);
         }
         i++;
     }
