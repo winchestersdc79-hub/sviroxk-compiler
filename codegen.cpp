@@ -3,7 +3,31 @@
 #include <stdexcept>
 
 void CodeGen::generate(const Node& node) {
-    if (node.type == NODE_VAR_DECL) {
+    
+if (node.type == NODE_SLOV) {
+    llvm::FunctionType* funcType =
+        llvm::FunctionType::get(builder.getInt32Ty(), false);
+    llvm::Function* mainFunc =
+        llvm::Function::Create(funcType,
+            llvm::Function::ExternalLinkage,
+            "main", module);
+    llvm::BasicBlock* block =
+        llvm::BasicBlock::Create(context, "entry", mainFunc);
+    builder.SetInsertPoint(block);
+    llvm::FunctionType* putsType =
+        llvm::FunctionType::get(builder.getInt32Ty(),
+            {builder.getPtrTy()}, false);
+    llvm::Function* putsFunc =
+        llvm::Function::Create(putsType,
+            llvm::Function::ExternalLinkage,
+            "puts", module);
+    llvm::Value* str =
+        builder.CreateGlobalStringPtr(node.value);
+    builder.CreateCall(putsFunc, {str});
+    builder.CreateRet(builder.getInt32(0));
+    return;
+}
+if (node.type == NODE_VAR_DECL) {
 
         // Создаём функцию main
         llvm::FunctionType* funcType =

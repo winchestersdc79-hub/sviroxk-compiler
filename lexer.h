@@ -32,7 +32,7 @@ enum TokenType {
     
     // Структуры
     TIP,        // struct
-    
+    SLOV,       // вывод текста    
     // Символы
     EQUALS,     // =
     SEMICOLON,  // ;

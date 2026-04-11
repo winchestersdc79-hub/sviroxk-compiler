@@ -10,6 +10,7 @@ enum NodeType {
     NODE_NUMBER,      // число
     NODE_STRING,      // текст
     NODE_IDENTIFIER,  // имя переменной
+    NODE_SLOV,        // вывод текста
 };
 
 // Узел дерева

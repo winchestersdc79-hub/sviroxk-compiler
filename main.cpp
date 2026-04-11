@@ -1,24 +1,30 @@
 #include <iostream>
+#include <fstream>
+#include <string>
 #include "lexer.h"
 #include "parser.h"
 #include "codegen.h"
 
-int main() {
-    std::string code = "svi rox lor x = 5;";
+int main(int argc, char* argv[]) {
+    if (argc < 2) {
+        std::cerr << "Использование: sviroxk <файл.svx>" << std::endl;
+        return 1;
+    }
 
-    std::cout << "Код: " << code << std::endl;
+    std::ifstream file(argv[1]);
+    if (!file.is_open()) {
+        std::cerr << "Файл не найден: " << argv[1] << std::endl;
+        return 1;
+    }
+    std::string code((std::istreambuf_iterator<char>(file)),
+                      std::istreambuf_iterator<char>());
+    file.close();
 
-    // Лексер
     std::vector<Token> tokens = tokenize(code);
-
-    // Парсер
     Node node = parse(tokens);
 
-    // Генератор
     CodeGen codegen;
     codegen.generate(node);
-
-    std::cout << "\nLLVM IR код:" << std::endl;
     codegen.print();
 
     return 0;

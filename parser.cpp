@@ -58,10 +58,21 @@ Node parseVarDecl(const std::vector<Token>& tokens) {
 Node parse(const std::vector<Token>& tokens) {
     pos = 0;
 
-    if (peek(tokens).type == SVI) {
-        return parseVarDecl(tokens);
-    }
+if (peek(tokens).type == SVI) {
+    return parseVarDecl(tokens);
+}
 
+if (peek(tokens).type == SLOV) {
+    Node node;
+    node.type = NODE_SLOV;
+    consume(tokens);  // slov
+    expect(tokens, LPAREN);  // (
+    Token val = consume(tokens);  // значение
+    node.value = val.value;
+    expect(tokens, RPAREN);  // )
+    expect(tokens, SEMICOLON);  // ;
+    return node;
+}
     std::cerr << "Неизвестная конструкция" << std::endl;
     exit(1);
 }
