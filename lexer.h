@@ -27,6 +27,7 @@ enum TokenType {
     // Математика
     PLUS, MINUS, STAR, SLASH, AMP,
     PTR,
+    ATK, ZAP, PRO, ZAK, FILE_T,
     // Сравнения
     GT, LT, EQ, NEQ,
     // Значения

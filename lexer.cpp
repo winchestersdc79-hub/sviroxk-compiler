@@ -31,6 +31,11 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "tip")  tokens.push_back({TIP,  word});
             else if (word == "slov") tokens.push_back({SLOV, word});
             else if (word == "ptr")  tokens.push_back({PTR,  word});
+            else if (word == "atk")  tokens.push_back({ATK,  word});
+            else if (word == "zap")  tokens.push_back({ZAP,  word});
+            else if (word == "pro")  tokens.push_back({PRO,  word});
+            else if (word == "zak")  tokens.push_back({ZAK,  word});
+            else if (word == "file") tokens.push_back({FILE_T, word});
             else tokens.push_back({IDENTIFIER, word});
             continue;
         }

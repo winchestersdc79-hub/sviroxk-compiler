@@ -6,31 +6,26 @@
 main:                                   // @main
 	.cfi_startproc
 // %bb.0:                               // %entry
-	sub	sp, sp, #32
-	.cfi_def_cfa_offset 32
+	str	x30, [sp, #-16]!                // 8-byte Folded Spill
+	.cfi_def_cfa_offset 16
 	.cfi_offset w30, -16
-	mov	w8, #5                          // =0x5
-	add	x9, sp, #28
 	adrp	x0, .L__unnamed_1
 	add	x0, x0, :lo12:.L__unnamed_1
-	mov	w1, #5                          // =0x5
-	str	w8, [sp, #28]
-	stp	x9, x30, [sp, #8]               // 8-byte Folded Spill
-	bl	printf
-	ldr	x8, [sp, #8]
-	mov	w9, #10                         // =0xa
-	adrp	x0, .L__unnamed_2
-	add	x0, x0, :lo12:.L__unnamed_2
-	mov	w1, #10                         // =0xa
-	str	w9, [x8]
-	bl	printf
-	ldr	w1, [sp, #28]
+	adrp	x1, .L__unnamed_2
+	add	x1, x1, :lo12:.L__unnamed_2
+	bl	fopen
+	mov	x1, x0
+	str	x0, [sp, #8]
 	adrp	x0, .L__unnamed_3
 	add	x0, x0, :lo12:.L__unnamed_3
-	bl	printf
-	ldr	x30, [sp, #16]                  // 8-byte Folded Reload
+	bl	fputs
+	ldr	x0, [sp, #8]
+	bl	fclose
+	adrp	x0, .L__unnamed_4
+	add	x0, x0, :lo12:.L__unnamed_4
+	bl	puts
 	mov	w0, wzr
-	add	sp, sp, #32
+	ldr	x30, [sp], #16                  // 8-byte Folded Reload
 	ret
 .Lfunc_end0:
 	.size	main, .Lfunc_end0-main
@@ -39,17 +34,22 @@ main:                                   // @main
 	.type	.L__unnamed_1,@object           // @0
 	.section	.rodata.str1.1,"aMS",@progbits,1
 .L__unnamed_1:
-	.asciz	"%d\n"
-	.size	.L__unnamed_1, 4
+	.asciz	"test.txt"
+	.size	.L__unnamed_1, 9
 
 	.type	.L__unnamed_2,@object           // @1
 .L__unnamed_2:
-	.asciz	"%d\n"
-	.size	.L__unnamed_2, 4
+	.asciz	"w"
+	.size	.L__unnamed_2, 2
 
 	.type	.L__unnamed_3,@object           // @2
 .L__unnamed_3:
-	.asciz	"%d\n"
-	.size	.L__unnamed_3, 4
+	.asciz	"\320\277\321\200\320\270\320\262\320\265\321\202 \320\270\320\267 SVIROXK"
+	.size	.L__unnamed_3, 26
+
+	.type	.L__unnamed_4,@object           // @3
+.L__unnamed_4:
+	.asciz	"\321\204\320\260\320\271\320\273 \320\267\320\260\320\277\320\270\321\201\320\260\320\275"
+	.size	.L__unnamed_4, 24
 
 	.section	".note.GNU-stack","",@progbits

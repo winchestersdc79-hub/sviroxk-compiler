@@ -21,6 +21,24 @@ std::vector<Node> parseBlock();
 
 Node parseExpr() {
     Node left;
+    // atk — открыть файл
+    if (peek().type == ATK) {
+        consume();
+        Node left; left.type = NODE_FILE_OPEN;
+        expect(LPAREN);
+        left.value = consume().value; // имя файла
+        expect(RPAREN);
+        return left;
+    }
+    // pro — прочитать файл
+    if (peek().type == PRO) {
+        consume();
+        Node left; left.type = NODE_FILE_READ;
+        expect(LPAREN);
+        left.varName = consume().value;
+        expect(RPAREN);
+        return left;
+    }
     // &x — адрес
     if (peek().type == AMP) {
         consume();
@@ -185,6 +203,29 @@ Node parseOne() {
         Node node; node.type = NODE_RETURN;
         consume();
         node.left = new Node(parseExpr());
+        expect(SEMICOLON);
+        return node;
+    }
+    // atk — открыть файл (используется в parseExpr через svi)
+    // zap — записать в файл
+    if (peek().type == ZAP) {
+        Node node; node.type = NODE_FILE_WRITE;
+        consume();
+        expect(LPAREN);
+        node.varName = consume().value; // имя файла
+        expect(COMMA);
+        node.left = new Node(parseExpr());
+        expect(RPAREN);
+        expect(SEMICOLON);
+        return node;
+    }
+    // zak — закрыть файл
+    if (peek().type == ZAK) {
+        Node node; node.type = NODE_FILE_CLOSE;
+        consume();
+        expect(LPAREN);
+        node.varName = consume().value;
+        expect(RPAREN);
         expect(SEMICOLON);
         return node;
     }

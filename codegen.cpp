@@ -20,6 +20,19 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         }
         return builder.getInt32(0);
     }
+    if (node.type == NODE_FILE_OPEN) {
+        llvm::FunctionType* fopenType =
+            llvm::FunctionType::get(builder.getPtrTy(),
+                {builder.getPtrTy(), builder.getPtrTy()}, false);
+        llvm::Function* fopenFunc = module.getFunction("fopen");
+        if (!fopenFunc) {
+            fopenFunc = llvm::Function::Create(fopenType,
+                llvm::Function::ExternalLinkage, "fopen", module);
+        }
+        llvm::Value* fname = getStringPtr(node.value);
+        llvm::Value* mode = getStringPtr("w");
+        return builder.CreateCall(fopenFunc, {fname, mode});
+    }
     if (node.type == NODE_ADDR) {
         llvm::AllocaInst* alloca = vars[node.varName];
         if (alloca) return alloca;
@@ -79,7 +92,7 @@ void CodeGen::genNode(const Node& node) {
         }
     }
     else if (node.type == NODE_VAR_DECL) {
-        llvm::Type* ty = (node.varType == "ptr") ?
+        llvm::Type* ty = (node.varType == "ptr" || node.varType == "file" || node.varType == "cos") ?
             (llvm::Type*)builder.getPtrTy() :
             (llvm::Type*)builder.getInt32Ty();
         llvm::AllocaInst* alloca =
@@ -87,6 +100,44 @@ void CodeGen::genNode(const Node& node) {
         llvm::Value* val = genExpr(*node.left);
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
+    }
+    else if (node.type == NODE_FILE_WRITE) {
+        llvm::FunctionType* fputsType =
+            llvm::FunctionType::get(builder.getInt32Ty(),
+                {builder.getPtrTy(), builder.getPtrTy()}, false);
+        llvm::Function* fputsFunc =
+            llvm::Function::Create(fputsType,
+                llvm::Function::ExternalLinkage, "fputs", module);
+        llvm::FunctionType* fcloseType =
+            llvm::FunctionType::get(builder.getInt32Ty(),
+                {builder.getPtrTy()}, false);
+        llvm::Function* fcloseFunc =
+            llvm::Function::Create(fcloseType,
+                llvm::Function::ExternalLinkage, "fclose", module);
+        llvm::AllocaInst* fileAlloca = vars[node.varName];
+        if (fileAlloca) {
+            llvm::Value* filePtr =
+                builder.CreateLoad(builder.getPtrTy(), fileAlloca);
+            llvm::Value* str = getStringPtr(node.left->value);
+            builder.CreateCall(fputsFunc, {str, filePtr});
+        }
+    }
+    else if (node.type == NODE_FILE_CLOSE) {
+        llvm::FunctionType* fcloseType =
+            llvm::FunctionType::get(builder.getInt32Ty(),
+                {builder.getPtrTy()}, false);
+        llvm::Function* fcloseFunc =
+            module.getFunction("fclose");
+        if (!fcloseFunc) {
+            fcloseFunc = llvm::Function::Create(fcloseType,
+                llvm::Function::ExternalLinkage, "fclose", module);
+        }
+        llvm::AllocaInst* fileAlloca = vars[node.varName];
+        if (fileAlloca) {
+            llvm::Value* filePtr =
+                builder.CreateLoad(builder.getPtrTy(), fileAlloca);
+            builder.CreateCall(fcloseFunc, {filePtr});
+        }
     }
     else if (node.type == NODE_DEREF_ASSIGN) {
         llvm::AllocaInst* alloca = vars[node.varName];

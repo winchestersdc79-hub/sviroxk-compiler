@@ -1,6 +1,4 @@
-svi rox lor x = 5;
-svi ptr lor p = &x;
-slov(*p);
-*p = 10;
-slov(*p);
-slov(x);
+svi file lor f = atk("test.txt");
+zap(f, "привет из SVIROXK");
+zak(f);
+slov("файл записан");

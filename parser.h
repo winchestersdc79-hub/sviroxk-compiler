@@ -25,6 +25,10 @@ enum NodeType {
     NODE_ADDR,
     NODE_DEREF,
     NODE_DEREF_ASSIGN,
+    NODE_FILE_OPEN,
+    NODE_FILE_WRITE,
+    NODE_FILE_READ,
+    NODE_FILE_CLOSE,
     NODE_LOOP_W,
 };
 
