@@ -7,23 +7,24 @@ main:                                   // @main
 	.cfi_startproc
 // %bb.0:                               // %entry
 	sub	sp, sp, #32
-	str	x30, [sp, #16]                  // 8-byte Folded Spill
 	.cfi_def_cfa_offset 32
 	.cfi_offset w30, -16
-	mov	w8, #10                         // =0xa
-	mov	w9, #20                         // =0x14
+	mov	w8, #5                          // =0x5
+	add	x9, sp, #28
 	adrp	x0, .L__unnamed_1
 	add	x0, x0, :lo12:.L__unnamed_1
-	stp	w9, w8, [sp, #24]
-	mov	w8, #30                         // =0x1e
-	mov	w1, #10                         // =0xa
-	str	w8, [sp, #12]
+	mov	w1, #5                          // =0x5
+	str	w8, [sp, #28]
+	stp	x9, x30, [sp, #8]               // 8-byte Folded Spill
 	bl	printf
-	ldr	w1, [sp, #24]
+	ldr	x8, [sp, #8]
+	mov	w9, #10                         // =0xa
 	adrp	x0, .L__unnamed_2
 	add	x0, x0, :lo12:.L__unnamed_2
+	mov	w1, #10                         // =0xa
+	str	w9, [x8]
 	bl	printf
-	ldr	w1, [sp, #12]
+	ldr	w1, [sp, #28]
 	adrp	x0, .L__unnamed_3
 	add	x0, x0, :lo12:.L__unnamed_3
 	bl	printf

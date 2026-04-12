@@ -22,6 +22,9 @@ enum NodeType {
     NODE_RETURN,
     NODE_ARRAY_DECL,
     NODE_ARRAY_ACCESS,
+    NODE_ADDR,
+    NODE_DEREF,
+    NODE_DEREF_ASSIGN,
     NODE_LOOP_W,
 };
 

@@ -25,7 +25,8 @@ enum TokenType {
     LBRACE, RBRACE,
     LBRACKET, RBRACKET, COMMA,
     // Математика
-    PLUS, MINUS, STAR, SLASH,
+    PLUS, MINUS, STAR, SLASH, AMP,
+    PTR,
     // Сравнения
     GT, LT, EQ, NEQ,
     // Значения

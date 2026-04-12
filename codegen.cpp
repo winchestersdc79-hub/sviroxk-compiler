@@ -20,6 +20,19 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         }
         return builder.getInt32(0);
     }
+    if (node.type == NODE_ADDR) {
+        llvm::AllocaInst* alloca = vars[node.varName];
+        if (alloca) return alloca;
+        return builder.getInt32(0);
+    }
+    if (node.type == NODE_DEREF) {
+        llvm::AllocaInst* alloca = vars[node.varName];
+        if (alloca) {
+            llvm::Value* ptr = builder.CreateLoad(builder.getPtrTy(), alloca);
+            return builder.CreateLoad(builder.getInt32Ty(), ptr);
+        }
+        return builder.getInt32(0);
+    }
     if (node.type == NODE_ARRAY_ACCESS) {
         int idx = std::stoi(node.left->value);
         std::string name = node.varName + "_" + std::to_string(idx);
@@ -55,7 +68,8 @@ void CodeGen::genNode(const Node& node) {
         } else if (node.left && (
             node.left->type == NODE_IDENTIFIER ||
             node.left->type == NODE_ARRAY_ACCESS ||
-            node.left->type == NODE_FUNC_CALL)) {
+            node.left->type == NODE_FUNC_CALL ||
+            node.left->type == NODE_DEREF)) {
             llvm::Value* fmt = getStringPtr("%d\n");
             llvm::Value* val = genExpr(*node.left);
             builder.CreateCall(printfFunc, {fmt, val});
@@ -65,11 +79,21 @@ void CodeGen::genNode(const Node& node) {
         }
     }
     else if (node.type == NODE_VAR_DECL) {
+        llvm::Type* ty = (node.varType == "ptr") ?
+            (llvm::Type*)builder.getPtrTy() :
+            (llvm::Type*)builder.getInt32Ty();
         llvm::AllocaInst* alloca =
-            builder.CreateAlloca(builder.getInt32Ty(), nullptr, node.varName);
+            builder.CreateAlloca(ty, nullptr, node.varName);
         llvm::Value* val = genExpr(*node.left);
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
+    }
+    else if (node.type == NODE_DEREF_ASSIGN) {
+        llvm::AllocaInst* alloca = vars[node.varName];
+        if (alloca) {
+            llvm::Value* ptr = builder.CreateLoad(builder.getPtrTy(), alloca);
+            builder.CreateStore(genExpr(*node.left), ptr);
+        }
     }
     else if (node.type == NODE_ASSIGN) {
         llvm::AllocaInst* alloca = vars[node.varName];

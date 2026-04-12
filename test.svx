@@ -1,4 +1,6 @@
-svi rox[] lor arr = [10, 20, 30];
-slov(arr[0]);
-slov(arr[1]);
-slov(arr[2]);
+svi rox lor x = 5;
+svi ptr lor p = &x;
+slov(*p);
+*p = 10;
+slov(*p);
+slov(x);

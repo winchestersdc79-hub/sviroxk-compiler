@@ -21,6 +21,22 @@ std::vector<Node> parseBlock();
 
 Node parseExpr() {
     Node left;
+    // &x — адрес
+    if (peek().type == AMP) {
+        consume();
+        Token name = consume();
+        left.type = NODE_ADDR;
+        left.varName = name.value;
+        return left;
+    }
+    // *p — разыменование
+    if (peek().type == STAR) {
+        consume();
+        Token name = consume();
+        left.type = NODE_DEREF;
+        left.varName = name.value;
+        return left;
+    }
     Token t = consume();
     if (t.type == NUMBER)     { left.type = NODE_NUMBER;     left.value = t.value; }
     else if (t.type == STRING)     { left.type = NODE_STRING;     left.value = t.value; }
@@ -168,6 +184,16 @@ Node parseOne() {
     if (peek().type == REV) {
         Node node; node.type = NODE_RETURN;
         consume();
+        node.left = new Node(parseExpr());
+        expect(SEMICOLON);
+        return node;
+    }
+    // *p = 10 — присваивание через указатель
+    if (peek().type == STAR) {
+        consume(); // *
+        Node node; node.type = NODE_DEREF_ASSIGN;
+        node.varName = consume().value; // имя указателя
+        expect(EQUALS);
         node.left = new Node(parseExpr());
         expect(SEMICOLON);
         return node;

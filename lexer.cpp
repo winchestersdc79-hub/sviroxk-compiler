@@ -30,6 +30,7 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "cop")  tokens.push_back({COP,  word});
             else if (word == "tip")  tokens.push_back({TIP,  word});
             else if (word == "slov") tokens.push_back({SLOV, word});
+            else if (word == "ptr")  tokens.push_back({PTR,  word});
             else tokens.push_back({IDENTIFIER, word});
             continue;
         }
@@ -73,6 +74,7 @@ std::vector<Token> tokenize(const std::string& code) {
             case '+': tokens.push_back({PLUS,     "+"}); break;
             case '-': tokens.push_back({MINUS,    "-"}); break;
             case '*': tokens.push_back({STAR,     "*"}); break;
+            case '&': tokens.push_back({AMP,      "&"}); break;
             case '/': tokens.push_back({SLASH,    "/"}); break;
             case ';': tokens.push_back({SEMICOLON,";"}); break;
             case '(': tokens.push_back({LPAREN,   "("}); break;
