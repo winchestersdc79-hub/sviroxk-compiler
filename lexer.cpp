@@ -1,26 +1,18 @@
-#include <iostream>
 #include "lexer.h"
+#include <iostream>
 #include <cctype>
-#include <stdexcept>
 
 std::vector<Token> tokenize(const std::string& code) {
     std::vector<Token> tokens;
     int i = 0;
 
     while (i < code.size()) {
-        
-        // Пропускаем пробелы
-        if (isspace(code[i])) {
-            i++;
-            continue;
-        }
+        if (isspace(code[i])) { i++; continue; }
 
-        // Ключевые слова и идентификаторы
         if (isalpha(code[i])) {
             std::string word;
-            while (i < code.size() && isalnum(code[i])) {
+            while (i < code.size() && isalnum(code[i]))
                 word += code[i++];
-            }
 
             if      (word == "svi")  tokens.push_back({SVI,  word});
             else if (word == "lor")  tokens.push_back({LOR,  word});
@@ -38,46 +30,57 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "cop")  tokens.push_back({COP,  word});
             else if (word == "tip")  tokens.push_back({TIP,  word});
             else if (word == "slov") tokens.push_back({SLOV, word});
-            else if (word == "true" || word == "false")
-                tokens.push_back({IDENTIFIER, word});
-            else
-                tokens.push_back({IDENTIFIER, word});
-
+            else tokens.push_back({IDENTIFIER, word});
             continue;
         }
 
-        // Числа
         if (isdigit(code[i])) {
             std::string num;
-            while (i < code.size() && (isdigit(code[i]) || code[i] == '.')) {
+            while (i < code.size() && (isdigit(code[i]) || code[i] == '.'))
                 num += code[i++];
-            }
             tokens.push_back({NUMBER, num});
             continue;
         }
 
-        // Строки в кавычках
         if (code[i] == '"') {
             std::string str;
-            i++; // пропускаем открывающую кавычку
-            while (i < code.size() && code[i] != '"') {
+            i++;
+            while (i < code.size() && code[i] != '"')
                 str += code[i++];
-            }
-            i++; // пропускаем закрывающую кавычку
+            i++;
             tokens.push_back({STRING, str});
             continue;
         }
 
-        // Символы
         switch (code[i]) {
-            case '=': tokens.push_back({EQUALS,    "="}); break;
-            case ';': tokens.push_back({SEMICOLON, ";"}); break;
-            case '(': tokens.push_back({LPAREN,    "("}); break;
-            case ')': tokens.push_back({RPAREN,    ")"}); break;
-            case '{': tokens.push_back({LBRACE,    "{"}); break;
-            case '}': tokens.push_back({RBRACE,    "}"}); break;
-            case '[': tokens.push_back({LBRACKET,  "["}); break;
-            case ']': tokens.push_back({RBRACKET,  "]"}); break;
+            case '=':
+                if (code[i+1] == '=') {
+                    tokens.push_back({EQ, "=="});
+                    i += 2;
+                } else {
+                    tokens.push_back({EQUALS, "="});
+                    i++;
+                }
+                continue;
+            case '!':
+                if (code[i+1] == '=') {
+                    tokens.push_back({NEQ, "!="});
+                    i += 2;
+                }
+                continue;
+            case '>': tokens.push_back({GT,       ">"}); break;
+            case '<': tokens.push_back({LT,       "<"}); break;
+            case '+': tokens.push_back({PLUS,     "+"}); break;
+            case '-': tokens.push_back({MINUS,    "-"}); break;
+            case '*': tokens.push_back({STAR,     "*"}); break;
+            case '/': tokens.push_back({SLASH,    "/"}); break;
+            case ';': tokens.push_back({SEMICOLON,";"}); break;
+            case '(': tokens.push_back({LPAREN,   "("}); break;
+            case ')': tokens.push_back({RPAREN,   ")"}); break;
+            case '{': tokens.push_back({LBRACE,   "{"}); break;
+            case '}': tokens.push_back({RBRACE,   "}"}); break;
+            case '[': tokens.push_back({LBRACKET, "["}); break;
+            case ']': tokens.push_back({RBRACKET, "]"}); break;
             default:
                 std::cerr << "Неизвестный символ: " << code[i] << std::endl;
                 exit(1);

@@ -3,25 +3,27 @@
 
 #include "lexer.h"
 #include <memory>
+#include <vector>
 
-// Типы узлов дерева
 enum NodeType {
-    NODE_VAR_DECL,    // объявление переменной
-    NODE_NUMBER,      // число
-    NODE_STRING,      // текст
-    NODE_IDENTIFIER,  // имя переменной
-    NODE_SLOV,        // вывод текста
+    NODE_VAR_DECL,
+    NODE_NUMBER,
+    NODE_STRING,
+    NODE_IDENTIFIER,
+    NODE_SLOV,
+    NODE_BINOP,    // математическая операция
 };
 
-// Узел дерева
 struct Node {
     NodeType type;
     std::string value;
-    std::string varType;  // тип переменной (rox, dor...)
-    std::string varName;  // имя переменной
+    std::string varType;
+    std::string varName;
+    std::string op;        // +, -, *, /
+    Node* left = nullptr;  // левая часть
+    Node* right = nullptr; // правая часть
 };
 
-// Функция парсера
 Node parse(const std::vector<Token>& tokens);
 
 #endif

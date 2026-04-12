@@ -1,0 +1,2 @@
+slov("5 + 3 = ");
+svi rox lor x = 5 + 3;

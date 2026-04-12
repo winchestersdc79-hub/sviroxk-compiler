@@ -22,7 +22,7 @@ main:                                   // @main
 	.type	.L__unnamed_1,@object           // @0
 	.section	.rodata.str1.1,"aMS",@progbits,1
 .L__unnamed_1:
-	.asciz	"\320\277\321\200\320\270\320\262\320\265\321\202 \320\274\320\270\321\200"
-	.size	.L__unnamed_1, 20
+	.asciz	"5 + 3 = "
+	.size	.L__unnamed_1, 9
 
 	.section	".note.GNU-stack","",@progbits
