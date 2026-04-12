@@ -24,6 +24,16 @@ Node parseExpr() {
     Token t = consume();
     if (t.type == NUMBER)     { left.type = NODE_NUMBER;     left.value = t.value; }
     else if (t.type == STRING)     { left.type = NODE_STRING;     left.value = t.value; }
+    else if (t.type == COP) {
+        left.type = NODE_FUNC_CALL;
+        left.varName = consume().value;
+        expect(LPAREN);
+        while (peek().type != RPAREN && peek().type != END) {
+            left.args.push_back(parseExpr());
+            if (peek().type == COMMA) consume();
+        }
+        expect(RPAREN);
+    }
     else if (t.type == IDENTIFIER) { left.type = NODE_IDENTIFIER; left.value = t.value; }
 
     Token next = peek();

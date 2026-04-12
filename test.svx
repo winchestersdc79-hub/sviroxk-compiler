@@ -1,4 +1,5 @@
 fucn add(rox a, rox b) {
-    slov("внутри");
+    rev a + b;
 }
-cop add(5, 3);
+svi rox lor result = cop add(5, 3);
+slov(result);
