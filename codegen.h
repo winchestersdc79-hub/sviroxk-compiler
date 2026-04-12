@@ -13,6 +13,7 @@ public:
     llvm::IRBuilder<> builder;
     llvm::Module module;
     std::map<std::string, llvm::AllocaInst*> vars;
+    std::map<std::string, llvm::Function*> funcs;
     llvm::Function* putsFunc = nullptr;
     llvm::Function* printfFunc = nullptr;
 

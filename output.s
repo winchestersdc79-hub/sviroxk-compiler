@@ -6,40 +6,40 @@
 main:                                   // @main
 	.cfi_startproc
 // %bb.0:                               // %entry
-	sub	sp, sp, #32
-	stp	x30, x19, [sp, #16]             // 16-byte Folded Spill
-	.cfi_def_cfa_offset 32
-	.cfi_offset w19, -8
+	str	x30, [sp, #-16]!                // 8-byte Folded Spill
+	.cfi_def_cfa_offset 16
 	.cfi_offset w30, -16
-	mov	w8, wzr
-	adrp	x19, .L__unnamed_1
-	add	x19, x19, :lo12:.L__unnamed_1
-.LBB0_1:                                // %cond
-                                        // =>This Inner Loop Header: Depth=1
-	cmp	w8, #2
-	str	w8, [sp, #12]
-	b.gt	.LBB0_3
-// %bb.2:                               // %body
-                                        //   in Loop: Header=BB0_1 Depth=1
-	ldr	w1, [sp, #12]
-	mov	x0, x19
-	bl	printf
-	ldr	w8, [sp, #12]
-	add	w8, w8, #1
-	b	.LBB0_1
-.LBB0_3:                                // %after
-	ldp	x30, x19, [sp, #16]             // 16-byte Folded Reload
+	bl	privet
 	mov	w0, wzr
-	add	sp, sp, #32
+	ldr	x30, [sp], #16                  // 8-byte Folded Reload
 	ret
 .Lfunc_end0:
 	.size	main, .Lfunc_end0-main
 	.cfi_endproc
                                         // -- End function
+	.globl	privet                          // -- Begin function privet
+	.p2align	2
+	.type	privet,@function
+privet:                                 // @privet
+	.cfi_startproc
+// %bb.0:                               // %entry
+	str	x30, [sp, #-16]!                // 8-byte Folded Spill
+	.cfi_def_cfa_offset 16
+	.cfi_offset w30, -16
+	adrp	x0, .L__unnamed_1
+	add	x0, x0, :lo12:.L__unnamed_1
+	bl	puts
+	mov	w0, wzr
+	ldr	x30, [sp], #16                  // 8-byte Folded Reload
+	ret
+.Lfunc_end1:
+	.size	privet, .Lfunc_end1-privet
+	.cfi_endproc
+                                        // -- End function
 	.type	.L__unnamed_1,@object           // @0
 	.section	.rodata.str1.1,"aMS",@progbits,1
 .L__unnamed_1:
-	.asciz	"%d\n"
-	.size	.L__unnamed_1, 4
+	.asciz	"\320\277\321\200\320\270\320\262\320\265\321\202 \320\270\320\267 \321\204\321\203\320\275\320\272\321\206\320\270\320\270"
+	.size	.L__unnamed_1, 33
 
 	.section	".note.GNU-stack","",@progbits

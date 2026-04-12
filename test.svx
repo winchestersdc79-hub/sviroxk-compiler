@@ -1,5 +1,5 @@
-svi rox lor x = 0;
-cert usy (x < 3) {
-    slov(x);
-    x = x + 1;
+fucn privet() {
+    slov("привет из функции");
 };
+
+cop privet();

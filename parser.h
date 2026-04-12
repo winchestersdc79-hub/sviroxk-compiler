@@ -15,6 +15,8 @@ enum NodeType {
     NODE_IF,
     NODE_LOOP_N,
     NODE_ASSIGN,
+    NODE_FUNC_DEF,
+    NODE_FUNC_CALL,
     NODE_LOOP_W,
 };
 

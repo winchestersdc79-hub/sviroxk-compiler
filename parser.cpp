@@ -83,6 +83,29 @@ Node parseOne(const std::vector<Token>& tokens) {
         expect(tokens, SEMICOLON);
         return node;
     }
+    if (peek(tokens).type == FUCN) {
+        Node node;
+        node.type = NODE_FUNC_DEF;
+        consume(tokens); // fucn
+        node.varName = consume(tokens).value; // имя
+        expect(tokens, LPAREN);
+        expect(tokens, RPAREN);
+        expect(tokens, LBRACE);
+        node.children = parseBlock(tokens);
+        expect(tokens, RBRACE);
+        expect(tokens, SEMICOLON);
+        return node;
+    }
+    if (peek(tokens).type == COP) {
+        Node node;
+        node.type = NODE_FUNC_CALL;
+        consume(tokens); // cop
+        node.varName = consume(tokens).value; // имя
+        expect(tokens, LPAREN);
+        expect(tokens, RPAREN);
+        expect(tokens, SEMICOLON);
+        return node;
+    }
     if (peek(tokens).type == IDENTIFIER && tokens[pos+1].type == EQUALS) {
         Node node;
         node.type = NODE_ASSIGN;

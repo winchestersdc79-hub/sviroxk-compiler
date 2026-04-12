@@ -1,31 +1,20 @@
 ; ModuleID = 'sviroxk'
 source_filename = "sviroxk"
 
-@0 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@0 = private unnamed_addr constant [33 x i8] c"\D0\BF\D1\80\D0\B8\D0\B2\D0\B5\D1\82 \D0\B8\D0\B7 \D1\84\D1\83\D0\BD\D0\BA\D1\86\D0\B8\D0\B8\00", align 1
 
 define i32 @main() {
 entry:
-  %x = alloca i32, align 4
-  store i32 0, ptr %x, align 4
-  br label %cond
-
-cond:                                             ; preds = %body, %entry
-  %0 = load i32, ptr %x, align 4
-  %1 = icmp slt i32 %0, 3
-  br i1 %1, label %body, label %after
-
-body:                                             ; preds = %cond
-  %2 = load i32, ptr %x, align 4
-  %3 = call i32 (ptr, ...) @printf(ptr @0, i32 %2)
-  %4 = load i32, ptr %x, align 4
-  %5 = add i32 %4, 1
-  store i32 %5, ptr %x, align 4
-  br label %cond
-
-after:                                            ; preds = %cond
+  %0 = call i32 @privet()
   ret i32 0
 }
 
 declare i32 @puts(ptr)
 
 declare i32 @printf(ptr, ...)
+
+define i32 @privet() {
+entry:
+  %0 = call i32 @puts(ptr @0)
+  ret i32 0
+}
