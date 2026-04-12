@@ -31,7 +31,7 @@ Node parseExpr() {
     // математика
     if (peek().type == SQRT || peek().type == ABS ||
         peek().type == POW  || peek().type == MAX ||
-        peek().type == MIN) {
+        peek().type == MIN  || peek().type == AR) {
         Node left;
         left.type = NODE_FUNC_CALL;
         left.varName = consume().value;
@@ -114,7 +114,8 @@ Node parseExpr() {
 
     Token next = peek();
     if (next.value == "+" || next.value == "-" ||
-        next.value == "*" || next.value == "/") {
+        next.value == "*" || next.value == "/" ||
+        next.value == "+") {
         consume();
         Node* b = new Node();
         b->type = NODE_BINOP;
@@ -240,7 +241,7 @@ Node parseOne() {
     // математика
     if (peek().type == SQRT || peek().type == ABS ||
         peek().type == POW  || peek().type == MAX ||
-        peek().type == MIN) {
+        peek().type == MIN  || peek().type == AR) {
         Node left;
     if (peek().type == MINUS) {
         consume();

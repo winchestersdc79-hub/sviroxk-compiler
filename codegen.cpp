@@ -11,112 +11,47 @@ llvm::Value* CodeGen::getStringPtr(const std::string& str) {
 llvm::Value* CodeGen::genExpr(const Node& node) {
     if (node.type == NODE_NUMBER)
         return builder.getInt32(std::stoi(node.value));
-    if (node.type == NODE_FUNC_CALL) {
-        // встроенная математика
-        if (node.varName == "sqrt" || node.varName == "abs" ||
-            node.varName == "pow"  || node.varName == "max" ||
-            node.varName == "min") {
-            std::string name = node.varName;
-            if (name == "sqrt") {
-                llvm::FunctionType* ft = llvm::FunctionType::get(
-                    builder.getDoubleTy(), {builder.getDoubleTy()}, false);
-                llvm::Function* f = module.getFunction("sqrt");
-                if (!f) f = llvm::Function::Create(ft,
-                    llvm::Function::ExternalLinkage, "sqrt", module);
-                llvm::Value* arg = builder.CreateSIToFP(
-                    genExpr(node.args[0]), builder.getDoubleTy());
-                return builder.CreateFPToSI(
-                    builder.CreateCall(f, {arg}), builder.getInt32Ty());
-            }
-            if (name == "abs") {
-                llvm::Value* arg = genExpr(node.args[0]);
-                llvm::Value* neg = builder.CreateNeg(arg);
-                llvm::Value* cmp = builder.CreateICmpSLT(arg, builder.getInt32(0));
-                return builder.CreateSelect(cmp, neg, arg);
-            }
-            if (name == "pow") {
-                llvm::FunctionType* ft = llvm::FunctionType::get(
-                    builder.getDoubleTy(),
-                    {builder.getDoubleTy(), builder.getDoubleTy()}, false);
-                llvm::Function* f = module.getFunction("pow");
-                if (!f) f = llvm::Function::Create(ft,
-                    llvm::Function::ExternalLinkage, "pow", module);
-                llvm::Value* a = builder.CreateSIToFP(
-                    genExpr(node.args[0]), builder.getDoubleTy());
-                llvm::Value* b = builder.CreateSIToFP(
-                    genExpr(node.args[1]), builder.getDoubleTy());
-                return builder.CreateFPToSI(
-                    builder.CreateCall(f, {a, b}), builder.getInt32Ty());
-            }
-            if (name == "max") {
-                llvm::Value* a = genExpr(node.args[0]);
-                llvm::Value* b = genExpr(node.args[1]);
-                return builder.CreateSelect(
-                    builder.CreateICmpSGT(a, b), a, b);
-            }
-            if (name == "min") {
-                llvm::Value* a = genExpr(node.args[0]);
-                llvm::Value* b = genExpr(node.args[1]);
-                return builder.CreateSelect(
-                    builder.CreateICmpSLT(a, b), a, b);
-            }
-        }
-        if (funcs.count(node.varName)) {
-            std::vector<llvm::Value*> argVals;
-            for (const Node& a : node.args)
-                argVals.push_back(genExpr(a));
-            return builder.CreateCall(funcs[node.varName], argVals);
+    if (node.type == NODE_STRING)
+        return getStringPtr(node.value);
+    if (node.type == NODE_IDENTIFIER) {
+        llvm::AllocaInst* alloca = vars[node.value];
+        if (alloca) {
+            if (alloca->getAllocatedType()->isPointerTy())
+                return builder.CreateLoad(builder.getPtrTy(), alloca);
+            return builder.CreateLoad(builder.getInt32Ty(), alloca);
         }
         return builder.getInt32(0);
     }
-    // встроенные математические функции
-    if (node.type == NODE_FUNC_CALL &&
-        (node.varName == "sqrt" || node.varName == "abs" ||
-         node.varName == "pow"  || node.varName == "max" ||
-         node.varName == "min")) {
-        std::string name = node.varName;
-        if (name == "sqrt") {
-            llvm::FunctionType* ft =
-                llvm::FunctionType::get(builder.getDoubleTy(),
-                    {builder.getDoubleTy()}, false);
-            llvm::Function* f = module.getFunction("sqrt");
-            if (!f) f = llvm::Function::Create(ft,
-                llvm::Function::ExternalLinkage, "sqrt", module);
-            llvm::Value* arg = genExpr(node.args[0]);
-            arg = builder.CreateSIToFP(arg, builder.getDoubleTy());
-            llvm::Value* res = builder.CreateCall(f, {arg});
-            return builder.CreateFPToSI(res, builder.getInt32Ty());
+    if (node.type == NODE_ARRAY_ACCESS) {
+        int idx = std::stoi(node.left->value);
+        std::string name = node.varName + "_" + std::to_string(idx);
+        llvm::AllocaInst* alloca = vars[name];
+        if (alloca) return builder.CreateLoad(builder.getInt32Ty(), alloca);
+        return builder.getInt32(0);
+    }
+    if (node.type == NODE_ADDR) {
+        llvm::AllocaInst* alloca = vars[node.varName];
+        if (alloca) return alloca;
+        return builder.getInt32(0);
+    }
+    if (node.type == NODE_DEREF) {
+        llvm::AllocaInst* alloca = vars[node.varName];
+        if (alloca) {
+            llvm::Value* ptr = builder.CreateLoad(builder.getPtrTy(), alloca);
+            return builder.CreateLoad(builder.getInt32Ty(), ptr);
         }
-        if (name == "abs") {
-            llvm::Value* arg = genExpr(node.args[0]);
-            llvm::Value* neg = builder.CreateNeg(arg);
-            llvm::Value* cmp = builder.CreateICmpSLT(arg, builder.getInt32(0));
-            return builder.CreateSelect(cmp, neg, arg);
-        }
-        if (name == "pow") {
-            llvm::FunctionType* ft =
-                llvm::FunctionType::get(builder.getDoubleTy(),
-                    {builder.getDoubleTy(), builder.getDoubleTy()}, false);
-            llvm::Function* f = module.getFunction("pow");
-            if (!f) f = llvm::Function::Create(ft,
-                llvm::Function::ExternalLinkage, "pow", module);
-            llvm::Value* a = builder.CreateSIToFP(genExpr(node.args[0]), builder.getDoubleTy());
-            llvm::Value* b = builder.CreateSIToFP(genExpr(node.args[1]), builder.getDoubleTy());
-            llvm::Value* res = builder.CreateCall(f, {a, b});
-            return builder.CreateFPToSI(res, builder.getInt32Ty());
-        }
-        if (name == "max") {
-            llvm::Value* a = genExpr(node.args[0]);
-            llvm::Value* b = genExpr(node.args[1]);
-            llvm::Value* cmp = builder.CreateICmpSGT(a, b);
-            return builder.CreateSelect(cmp, a, b);
-        }
-        if (name == "min") {
-            llvm::Value* a = genExpr(node.args[0]);
-            llvm::Value* b = genExpr(node.args[1]);
-            llvm::Value* cmp = builder.CreateICmpSLT(a, b);
-            return builder.CreateSelect(cmp, a, b);
-        }
+        return builder.getInt32(0);
+    }
+    if (node.type == NODE_FILE_OPEN) {
+        llvm::FunctionType* fopenType =
+            llvm::FunctionType::get(builder.getPtrTy(),
+                {builder.getPtrTy(), builder.getPtrTy()}, false);
+        llvm::Function* fopenF = module.getFunction("fopen");
+        if (!fopenF) fopenF = llvm::Function::Create(fopenType,
+            llvm::Function::ExternalLinkage, "fopen", module);
+        llvm::Value* fname = getStringPtr(node.value);
+        llvm::Value* mode = getStringPtr("w");
+        return builder.CreateCall(fopenF, {fname, mode});
     }
     if (node.type == NODE_INPUT) {
         llvm::FunctionType* printfType =
@@ -139,44 +74,6 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         builder.CreateCall(scanfF, {fmt, tmp});
         return builder.CreateLoad(builder.getInt32Ty(), tmp);
     }
-    if (node.type == NODE_FILE_OPEN) {
-        llvm::FunctionType* fopenType =
-            llvm::FunctionType::get(builder.getPtrTy(),
-                {builder.getPtrTy(), builder.getPtrTy()}, false);
-        llvm::Function* fopenFunc = module.getFunction("fopen");
-        if (!fopenFunc) {
-            fopenFunc = llvm::Function::Create(fopenType,
-                llvm::Function::ExternalLinkage, "fopen", module);
-        }
-        llvm::Value* fname = getStringPtr(node.value);
-        llvm::Value* mode = getStringPtr("w");
-        return builder.CreateCall(fopenFunc, {fname, mode});
-    }
-    if (node.type == NODE_ADDR) {
-        llvm::AllocaInst* alloca = vars[node.varName];
-        if (alloca) return alloca;
-        return builder.getInt32(0);
-    }
-    if (node.type == NODE_DEREF) {
-        llvm::AllocaInst* alloca = vars[node.varName];
-        if (alloca) {
-            llvm::Value* ptr = builder.CreateLoad(builder.getPtrTy(), alloca);
-            return builder.CreateLoad(builder.getInt32Ty(), ptr);
-        }
-        return builder.getInt32(0);
-    }
-    if (node.type == NODE_ARRAY_ACCESS) {
-        int idx = std::stoi(node.left->value);
-        std::string name = node.varName + "_" + std::to_string(idx);
-        llvm::AllocaInst* alloca = vars[name];
-        if (alloca) return builder.CreateLoad(builder.getInt32Ty(), alloca);
-        return builder.getInt32(0);
-    }
-    if (node.type == NODE_IDENTIFIER) {
-        llvm::AllocaInst* alloca = vars[node.value];
-        if (alloca) return builder.CreateLoad(builder.getInt32Ty(), alloca);
-        return builder.getInt32(0);
-    }
     if (node.type == NODE_BINOP) {
         llvm::Value* L = genExpr(*node.left);
         llvm::Value* R = genExpr(*node.right);
@@ -188,6 +85,69 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         if (node.op == "<") return builder.CreateICmpSLT(L, R);
         if (node.op == "==") return builder.CreateICmpEQ(L, R);
         if (node.op == "!=") return builder.CreateICmpNE(L, R);
+    }
+    if (node.type == NODE_FUNC_CALL) {
+        std::string name = node.varName;
+        // математика
+        if (name == "sqrt") {
+            llvm::FunctionType* ft = llvm::FunctionType::get(
+                builder.getDoubleTy(), {builder.getDoubleTy()}, false);
+            llvm::Function* f = module.getFunction("sqrt");
+            if (!f) f = llvm::Function::Create(ft,
+                llvm::Function::ExternalLinkage, "sqrt", module);
+            llvm::Value* arg = builder.CreateSIToFP(
+                genExpr(node.args[0]), builder.getDoubleTy());
+            return builder.CreateFPToSI(
+                builder.CreateCall(f, {arg}), builder.getInt32Ty());
+        }
+        if (name == "abs") {
+            llvm::Value* arg = genExpr(node.args[0]);
+            llvm::Value* neg = builder.CreateNeg(arg);
+            llvm::Value* cmp = builder.CreateICmpSLT(arg, builder.getInt32(0));
+            return builder.CreateSelect(cmp, neg, arg);
+        }
+        if (name == "pow") {
+            llvm::FunctionType* ft = llvm::FunctionType::get(
+                builder.getDoubleTy(),
+                {builder.getDoubleTy(), builder.getDoubleTy()}, false);
+            llvm::Function* f = module.getFunction("pow");
+            if (!f) f = llvm::Function::Create(ft,
+                llvm::Function::ExternalLinkage, "pow", module);
+            llvm::Value* a = builder.CreateSIToFP(
+                genExpr(node.args[0]), builder.getDoubleTy());
+            llvm::Value* b = builder.CreateSIToFP(
+                genExpr(node.args[1]), builder.getDoubleTy());
+            return builder.CreateFPToSI(
+                builder.CreateCall(f, {a, b}), builder.getInt32Ty());
+        }
+        if (name == "max") {
+            llvm::Value* a = genExpr(node.args[0]);
+            llvm::Value* b = genExpr(node.args[1]);
+            return builder.CreateSelect(builder.CreateICmpSGT(a, b), a, b);
+        }
+        if (name == "min") {
+            llvm::Value* a = genExpr(node.args[0]);
+            llvm::Value* b = genExpr(node.args[1]);
+            return builder.CreateSelect(builder.CreateICmpSLT(a, b), a, b);
+        }
+        if (name == "ar") {
+            llvm::FunctionType* strlenType =
+                llvm::FunctionType::get(builder.getInt32Ty(),
+                    {builder.getPtrTy()}, false);
+            llvm::Function* strlenF = module.getFunction("strlen");
+            if (!strlenF) strlenF = llvm::Function::Create(strlenType,
+                llvm::Function::ExternalLinkage, "strlen", module);
+            llvm::Value* str = genExpr(node.args[0]);
+            return builder.CreateCall(strlenF, {str});
+        }
+        // пользовательские функции
+        if (funcs.count(name)) {
+            std::vector<llvm::Value*> argVals;
+            for (const Node& a : node.args)
+                argVals.push_back(genExpr(a));
+            return builder.CreateCall(funcs[name], argVals);
+        }
+        return builder.getInt32(0);
     }
     return builder.getInt32(0);
 }
@@ -211,7 +171,9 @@ void CodeGen::genNode(const Node& node) {
         }
     }
     else if (node.type == NODE_VAR_DECL) {
-        llvm::Type* ty = (node.varType == "ptr" || node.varType == "file" || node.varType == "cos") ?
+        llvm::Type* ty = (node.varType == "ptr" ||
+                          node.varType == "file" ||
+                          node.varType == "cos") ?
             (llvm::Type*)builder.getPtrTy() :
             (llvm::Type*)builder.getInt32Ty();
         llvm::AllocaInst* alloca =
@@ -220,43 +182,9 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
     }
-    else if (node.type == NODE_FILE_WRITE) {
-        llvm::FunctionType* fputsType =
-            llvm::FunctionType::get(builder.getInt32Ty(),
-                {builder.getPtrTy(), builder.getPtrTy()}, false);
-        llvm::Function* fputsFunc =
-            llvm::Function::Create(fputsType,
-                llvm::Function::ExternalLinkage, "fputs", module);
-        llvm::FunctionType* fcloseType =
-            llvm::FunctionType::get(builder.getInt32Ty(),
-                {builder.getPtrTy()}, false);
-        llvm::Function* fcloseFunc =
-            llvm::Function::Create(fcloseType,
-                llvm::Function::ExternalLinkage, "fclose", module);
-        llvm::AllocaInst* fileAlloca = vars[node.varName];
-        if (fileAlloca) {
-            llvm::Value* filePtr =
-                builder.CreateLoad(builder.getPtrTy(), fileAlloca);
-            llvm::Value* str = getStringPtr(node.left->value);
-            builder.CreateCall(fputsFunc, {str, filePtr});
-        }
-    }
-    else if (node.type == NODE_FILE_CLOSE) {
-        llvm::FunctionType* fcloseType =
-            llvm::FunctionType::get(builder.getInt32Ty(),
-                {builder.getPtrTy()}, false);
-        llvm::Function* fcloseFunc =
-            module.getFunction("fclose");
-        if (!fcloseFunc) {
-            fcloseFunc = llvm::Function::Create(fcloseType,
-                llvm::Function::ExternalLinkage, "fclose", module);
-        }
-        llvm::AllocaInst* fileAlloca = vars[node.varName];
-        if (fileAlloca) {
-            llvm::Value* filePtr =
-                builder.CreateLoad(builder.getPtrTy(), fileAlloca);
-            builder.CreateCall(fcloseFunc, {filePtr});
-        }
+    else if (node.type == NODE_ASSIGN) {
+        llvm::AllocaInst* alloca = vars[node.varName];
+        if (alloca) builder.CreateStore(genExpr(*node.left), alloca);
     }
     else if (node.type == NODE_DEREF_ASSIGN) {
         llvm::AllocaInst* alloca = vars[node.varName];
@@ -265,12 +193,28 @@ void CodeGen::genNode(const Node& node) {
             builder.CreateStore(genExpr(*node.left), ptr);
         }
     }
-    else if (node.type == NODE_ASSIGN) {
-        llvm::AllocaInst* alloca = vars[node.varName];
-        if (alloca) builder.CreateStore(genExpr(*node.left), alloca);
-    }
     else if (node.type == NODE_RETURN) {
         builder.CreateRet(genExpr(*node.left));
+    }
+    else if (node.type == NODE_ARRAY_DECL) {
+        int idx = 0;
+        for (const Node& elem : node.args) {
+            std::string name = node.varName + "_" + std::to_string(idx++);
+            llvm::AllocaInst* alloca =
+                builder.CreateAlloca(builder.getInt32Ty(), nullptr, name);
+            builder.CreateStore(genExpr(elem), alloca);
+            vars[name] = alloca;
+        }
+    }
+    else if (node.type == NODE_STRUCT_DEF) {
+        for (const Node& field : node.children) {
+            std::string fullName = node.varName + "_" + field.varName;
+            llvm::AllocaInst* alloca =
+                builder.CreateAlloca(builder.getInt32Ty(), nullptr, fullName);
+            llvm::Value* val = genExpr(*field.left);
+            builder.CreateStore(val, alloca);
+            vars[fullName] = alloca;
+        }
     }
     else if (node.type == NODE_FUNC_DEF) {
         std::vector<llvm::Type*> paramTypes(
@@ -313,24 +257,36 @@ void CodeGen::genNode(const Node& node) {
             builder.CreateCall(funcs[node.varName], argVals);
         }
     }
-    else if (node.type == NODE_ARRAY_DECL) {
-        int idx = 0;
-        for (const Node& elem : node.args) {
-            std::string name = node.varName + "_" + std::to_string(idx++);
-            llvm::AllocaInst* alloca =
-                builder.CreateAlloca(builder.getInt32Ty(), nullptr, name);
-            builder.CreateStore(genExpr(elem), alloca);
-            vars[name] = alloca;
+    else if (node.type == NODE_FILE_WRITE) {
+        llvm::FunctionType* fputsType =
+            llvm::FunctionType::get(builder.getInt32Ty(),
+                {builder.getPtrTy(), builder.getPtrTy()}, false);
+        llvm::Function* fputsF = module.getFunction("fputs");
+        if (!fputsF) fputsF = llvm::Function::Create(fputsType,
+            llvm::Function::ExternalLinkage, "fputs", module);
+        llvm::FunctionType* fcloseType =
+            llvm::FunctionType::get(builder.getInt32Ty(),
+                {builder.getPtrTy()}, false);
+        llvm::AllocaInst* fileAlloca = vars[node.varName];
+        if (fileAlloca) {
+            llvm::Value* filePtr =
+                builder.CreateLoad(builder.getPtrTy(), fileAlloca);
+            llvm::Value* str = getStringPtr(node.left->value);
+            builder.CreateCall(fputsF, {str, filePtr});
         }
     }
-    else if (node.type == NODE_STRUCT_DEF) {
-        for (const Node& field : node.children) {
-            std::string fullName = node.varName + "_" + field.varName;
-            llvm::AllocaInst* alloca =
-                builder.CreateAlloca(builder.getInt32Ty(), nullptr, fullName);
-            llvm::Value* val = genExpr(*field.left);
-            builder.CreateStore(val, alloca);
-            vars[fullName] = alloca;
+    else if (node.type == NODE_FILE_CLOSE) {
+        llvm::FunctionType* fcloseType =
+            llvm::FunctionType::get(builder.getInt32Ty(),
+                {builder.getPtrTy()}, false);
+        llvm::Function* fcloseF = module.getFunction("fclose");
+        if (!fcloseF) fcloseF = llvm::Function::Create(fcloseType,
+            llvm::Function::ExternalLinkage, "fclose", module);
+        llvm::AllocaInst* fileAlloca = vars[node.varName];
+        if (fileAlloca) {
+            llvm::Value* filePtr =
+                builder.CreateLoad(builder.getPtrTy(), fileAlloca);
+            builder.CreateCall(fcloseF, {filePtr});
         }
     }
     else if (node.type == NODE_IF) {
@@ -365,16 +321,14 @@ void CodeGen::genNode(const Node& node) {
             llvm::BasicBlock::Create(context, "after", func);
         builder.CreateBr(loopBlock);
         builder.SetInsertPoint(loopBlock);
-        llvm::Value* cur =
-            builder.CreateLoad(builder.getInt32Ty(), i);
+        llvm::Value* cur = builder.CreateLoad(builder.getInt32Ty(), i);
         llvm::Value* cond = builder.CreateICmpSLT(cur, count);
         llvm::BasicBlock* bodyBlock =
             llvm::BasicBlock::Create(context, "body", func);
         builder.CreateCondBr(cond, bodyBlock, afterBlock);
         builder.SetInsertPoint(bodyBlock);
         for (const Node& n : node.children) genNode(n);
-        llvm::Value* next =
-            builder.CreateAdd(cur, builder.getInt32(1));
+        llvm::Value* next = builder.CreateAdd(cur, builder.getInt32(1));
         builder.CreateStore(next, i);
         builder.CreateBr(loopBlock);
         builder.SetInsertPoint(afterBlock);
@@ -413,11 +367,9 @@ void CodeGen::generate(const Node& program) {
     printfFunc = llvm::Function::Create(printfType,
         llvm::Function::ExternalLinkage, "printf", module);
 
-    // сначала все функции
     for (const Node& node : program.children)
         if (node.type == NODE_FUNC_DEF) genNode(node);
 
-    // потом main
     llvm::FunctionType* funcType =
         llvm::FunctionType::get(builder.getInt32Ty(), false);
     llvm::Function* mainFunc =

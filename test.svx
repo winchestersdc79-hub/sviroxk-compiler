@@ -1,2 +1,3 @@
-svi rox lor x = vd("введи число: ");
-slov(x);
+svi cos lor s = "hello";
+svi rox lor l = ar(s);
+slov(l);
