@@ -1,0 +1,4 @@
+fucn add(rox a, rox b) {
+    slov("внутри");
+}
+cop add(5, 3);

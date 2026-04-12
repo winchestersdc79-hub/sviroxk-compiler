@@ -4,60 +4,40 @@
 #include <string>
 #include <vector>
 
-// Все типы токенов языка SVIROXK
 enum TokenType {
     // Переменные
-    SVI,        // svi
-    LOR,        // lor
-    
-    // Типы данных
-    ROX,        // int
-    DOR,        // float
-    COS,        // string
-    BUE,        // bool
-    
+    SVI, LOR,
+    // Типы
+    ROX, DOR, COS, BUE,
     // Условия
-    ELES,       // if
-    SELE,       // else
-    
+    ELES, SELE,
     // Циклы
-    CERT,       // cert
-    CEH,        // ceh (число)
-    USY,        // usy (условие)
-    
+    CERT, CEH, USY,
     // Функции
-    FUCN,       // fucn
-    REV,        // return
-    COP,        // вызов функции
-    
+    FUCN, REV, COP,
     // Структуры
-    TIP,        // struct
-    
+    TIP,
+    // Вывод
+    SLOV,
     // Символы
-    EQUALS,     // =
-    SEMICOLON,  // ;
-    LPAREN,     // (
-    RPAREN,     // )
-    LBRACE,     // {
-    RBRACE,     // }
-    LBRACKET,   // [
-    RBRACKET,   // ]
-    
+    EQUALS, SEMICOLON,
+    LPAREN, RPAREN,
+    LBRACE, RBRACE,
+    LBRACKET, RBRACKET, COMMA,
+    // Математика
+    PLUS, MINUS, STAR, SLASH,
+    // Сравнения
+    GT, LT, EQ, NEQ,
     // Значения
-    NUMBER,     // 5, 3.14
-    STRING,     // "текст"
-    IDENTIFIER, // имена переменных
-    
-    END         // конец файла
+    NUMBER, STRING, IDENTIFIER,
+    END
 };
 
-// Структура токена
 struct Token {
     TokenType type;
     std::string value;
 };
 
-// Функция лексера
 std::vector<Token> tokenize(const std::string& code);
 
 #endif
