@@ -20,6 +20,13 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         }
         return builder.getInt32(0);
     }
+    if (node.type == NODE_ARRAY_ACCESS) {
+        int idx = std::stoi(node.left->value);
+        std::string name = node.varName + "_" + std::to_string(idx);
+        llvm::AllocaInst* alloca = vars[name];
+        if (alloca) return builder.CreateLoad(builder.getInt32Ty(), alloca);
+        return builder.getInt32(0);
+    }
     if (node.type == NODE_IDENTIFIER) {
         llvm::AllocaInst* alloca = vars[node.value];
         if (alloca) return builder.CreateLoad(builder.getInt32Ty(), alloca);
@@ -42,8 +49,13 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
 
 void CodeGen::genNode(const Node& node) {
     if (node.type == NODE_SLOV) {
-        if (node.left && node.left->type == NODE_IDENTIFIER
-            && vars.count(node.left->value)) {
+        if (node.left && node.left->type == NODE_STRING) {
+            llvm::Value* str = getStringPtr(node.left->value);
+            builder.CreateCall(putsFunc, {str});
+        } else if (node.left && (
+            node.left->type == NODE_IDENTIFIER ||
+            node.left->type == NODE_ARRAY_ACCESS ||
+            node.left->type == NODE_FUNC_CALL)) {
             llvm::Value* fmt = getStringPtr("%d\n");
             llvm::Value* val = genExpr(*node.left);
             builder.CreateCall(printfFunc, {fmt, val});
@@ -105,6 +117,16 @@ void CodeGen::genNode(const Node& node) {
             for (const Node& a : node.args)
                 argVals.push_back(genExpr(a));
             builder.CreateCall(funcs[node.varName], argVals);
+        }
+    }
+    else if (node.type == NODE_ARRAY_DECL) {
+        int idx = 0;
+        for (const Node& elem : node.args) {
+            std::string name = node.varName + "_" + std::to_string(idx++);
+            llvm::AllocaInst* alloca =
+                builder.CreateAlloca(builder.getInt32Ty(), nullptr, name);
+            builder.CreateStore(genExpr(elem), alloca);
+            vars[name] = alloca;
         }
     }
     else if (node.type == NODE_STRUCT_DEF) {

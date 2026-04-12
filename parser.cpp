@@ -34,7 +34,18 @@ Node parseExpr() {
         }
         expect(RPAREN);
     }
-    else if (t.type == IDENTIFIER) { left.type = NODE_IDENTIFIER; left.value = t.value; }
+    else if (t.type == IDENTIFIER) {
+        left.type = NODE_IDENTIFIER; left.value = t.value;
+        if (peek().type == LBRACKET) {
+            consume();
+            Node* access = new Node();
+            access->type = NODE_ARRAY_ACCESS;
+            access->varName = t.value;
+            access->left = new Node(parseExpr());
+            expect(RBRACKET);
+            left = *access;
+        }
+    }
 
     Token next = peek();
     if (next.value == "+" || next.value == "-" ||
@@ -76,25 +87,46 @@ std::vector<Node> parseBlock() {
 Node parseOne() {
     // svi
     if (peek().type == SVI) {
-        Node node; node.type = NODE_VAR_DECL;
         consume();
-        node.varType = consume().value;
+        std::string varType = consume().value;
+        // проверяем массив svi rox[] lor
+        bool isArray = false;
+        if (peek().type == LBRACKET) {
+            consume(); expect(RBRACKET);
+            isArray = true;
+        }
         consume(); // lor
-        node.varName = consume().value;
+        std::string varName = consume().value;
         expect(EQUALS);
-        node.left = new Node(parseExpr());
-        expect(SEMICOLON);
-        return node;
+        if (isArray) {
+            Node node; node.type = NODE_ARRAY_DECL;
+            node.varType = varType;
+            node.varName = varName;
+            expect(LBRACKET);
+            while (peek().type != RBRACKET && peek().type != END) {
+                node.args.push_back(parseExpr());
+                if (peek().type == COMMA) consume();
+            }
+            expect(RBRACKET);
+            expect(SEMICOLON);
+            return node;
+        } else {
+            Node node; node.type = NODE_VAR_DECL;
+            node.varType = varType;
+            node.varName = varName;
+            node.left = new Node(parseExpr());
+            expect(SEMICOLON);
+            return node;
+        }
     }
     // slov
     if (peek().type == SLOV) {
         Node node; node.type = NODE_SLOV;
         consume();
         expect(LPAREN);
-        Token val = consume();
-        node.value = val.value;
-        if (val.type == IDENTIFIER)
-            node.left = new Node({NODE_IDENTIFIER, val.value});
+        Node expr = parseExpr();
+        node.value = expr.value;
+        node.left = new Node(expr);
         expect(RPAREN);
         expect(SEMICOLON);
         return node;

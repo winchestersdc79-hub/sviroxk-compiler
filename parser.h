@@ -20,6 +20,8 @@ enum NodeType {
     NODE_STRUCT_DEF,
     NODE_ARG,
     NODE_RETURN,
+    NODE_ARRAY_DECL,
+    NODE_ARRAY_ACCESS,
     NODE_LOOP_W,
 };
 

@@ -1,5 +1,4 @@
-fucn add(rox a, rox b) {
-    rev a + b;
-}
-svi rox lor result = cop add(5, 3);
-slov(result);
+svi rox[] lor arr = [10, 20, 30];
+slov(arr[0]);
+slov(arr[1]);
+slov(arr[2]);
