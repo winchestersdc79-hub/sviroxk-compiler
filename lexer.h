@@ -23,7 +23,7 @@ enum TokenType {
     EQUALS, SEMICOLON,
     LPAREN, RPAREN,
     LBRACE, RBRACE,
-    LBRACKET, RBRACKET,
+    LBRACKET, RBRACKET, COMMA,
     // Математика
     PLUS, MINUS, STAR, SLASH,
     // Сравнения

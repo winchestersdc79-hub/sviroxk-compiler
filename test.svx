@@ -1,6 +1,4 @@
-tip Player {
-    rox health = 100;
-    rox speed = 5;
-};
-slov(Player_health);
-slov(Player_speed);
+fucn add(rox a, rox b) {
+    slov("внутри");
+}
+cop add(5, 3);

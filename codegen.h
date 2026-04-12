@@ -6,6 +6,7 @@
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
 #include <map>
+#include <string>
 
 class CodeGen {
 public:
@@ -18,6 +19,8 @@ public:
     llvm::Function* printfFunc = nullptr;
 
     CodeGen() : builder(context), module("sviroxk", context) {}
+
+    llvm::Value* getStringPtr(const std::string& str);
 
     llvm::Value* genExpr(const Node& node);
     void genNode(const Node& node);

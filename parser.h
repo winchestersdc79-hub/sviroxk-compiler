@@ -18,6 +18,8 @@ enum NodeType {
     NODE_FUNC_DEF,
     NODE_FUNC_CALL,
     NODE_STRUCT_DEF,
+    NODE_ARG,
+    NODE_RETURN,
     NODE_LOOP_W,
 };
 
@@ -31,6 +33,8 @@ struct Node {
     Node* right = nullptr;
     std::vector<Node> children;
     std::vector<Node> elseChildren;
+    std::vector<Node> args;
+    std::vector<std::string> params;
 };
 
 Node parse(const std::vector<Token>& tokens);
