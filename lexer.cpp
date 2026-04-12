@@ -36,6 +36,11 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "pro")  tokens.push_back({PRO,  word});
             else if (word == "zak")  tokens.push_back({ZAK,  word});
             else if (word == "file") tokens.push_back({FILE_T, word});
+            else if (word == "sqrt") tokens.push_back({SQRT, word});
+            else if (word == "abs")  tokens.push_back({ABS,  word});
+            else if (word == "pow")  tokens.push_back({POW,  word});
+            else if (word == "max")  tokens.push_back({MAX,  word});
+            else if (word == "min")  tokens.push_back({MIN,  word});
             else tokens.push_back({IDENTIFIER, word});
             continue;
         }

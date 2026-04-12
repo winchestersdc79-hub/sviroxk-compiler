@@ -21,6 +21,28 @@ std::vector<Node> parseBlock();
 
 Node parseExpr() {
     Node left;
+    if (peek().type == MINUS) {
+        consume();
+        Token num = consume();
+        left.type = NODE_NUMBER;
+        left.value = "-" + num.value;
+        return left;
+    }
+    // математика
+    if (peek().type == SQRT || peek().type == ABS ||
+        peek().type == POW  || peek().type == MAX ||
+        peek().type == MIN) {
+        Node left;
+        left.type = NODE_FUNC_CALL;
+        left.varName = consume().value;
+        expect(LPAREN);
+        while (peek().type != RPAREN && peek().type != END) {
+            left.args.push_back(parseExpr());
+            if (peek().type == COMMA) consume();
+        }
+        expect(RPAREN);
+        return left;
+    }
     // atk — открыть файл
     if (peek().type == ATK) {
         consume();
@@ -205,6 +227,28 @@ Node parseOne() {
         node.left = new Node(parseExpr());
         expect(SEMICOLON);
         return node;
+    }
+    // математика
+    if (peek().type == SQRT || peek().type == ABS ||
+        peek().type == POW  || peek().type == MAX ||
+        peek().type == MIN) {
+        Node left;
+    if (peek().type == MINUS) {
+        consume();
+        Token num = consume();
+        left.type = NODE_NUMBER;
+        left.value = "-" + num.value;
+        return left;
+    }
+        left.type = NODE_FUNC_CALL;
+        left.varName = consume().value;
+        expect(LPAREN);
+        while (peek().type != RPAREN && peek().type != END) {
+            left.args.push_back(parseExpr());
+            if (peek().type == COMMA) consume();
+        }
+        expect(RPAREN);
+        return left;
     }
     // atk — открыть файл (используется в parseExpr через svi)
     // zap — записать в файл

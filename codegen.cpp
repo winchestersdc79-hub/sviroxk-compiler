@@ -12,6 +12,55 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
     if (node.type == NODE_NUMBER)
         return builder.getInt32(std::stoi(node.value));
     if (node.type == NODE_FUNC_CALL) {
+        // встроенная математика
+        if (node.varName == "sqrt" || node.varName == "abs" ||
+            node.varName == "pow"  || node.varName == "max" ||
+            node.varName == "min") {
+            std::string name = node.varName;
+            if (name == "sqrt") {
+                llvm::FunctionType* ft = llvm::FunctionType::get(
+                    builder.getDoubleTy(), {builder.getDoubleTy()}, false);
+                llvm::Function* f = module.getFunction("sqrt");
+                if (!f) f = llvm::Function::Create(ft,
+                    llvm::Function::ExternalLinkage, "sqrt", module);
+                llvm::Value* arg = builder.CreateSIToFP(
+                    genExpr(node.args[0]), builder.getDoubleTy());
+                return builder.CreateFPToSI(
+                    builder.CreateCall(f, {arg}), builder.getInt32Ty());
+            }
+            if (name == "abs") {
+                llvm::Value* arg = genExpr(node.args[0]);
+                llvm::Value* neg = builder.CreateNeg(arg);
+                llvm::Value* cmp = builder.CreateICmpSLT(arg, builder.getInt32(0));
+                return builder.CreateSelect(cmp, neg, arg);
+            }
+            if (name == "pow") {
+                llvm::FunctionType* ft = llvm::FunctionType::get(
+                    builder.getDoubleTy(),
+                    {builder.getDoubleTy(), builder.getDoubleTy()}, false);
+                llvm::Function* f = module.getFunction("pow");
+                if (!f) f = llvm::Function::Create(ft,
+                    llvm::Function::ExternalLinkage, "pow", module);
+                llvm::Value* a = builder.CreateSIToFP(
+                    genExpr(node.args[0]), builder.getDoubleTy());
+                llvm::Value* b = builder.CreateSIToFP(
+                    genExpr(node.args[1]), builder.getDoubleTy());
+                return builder.CreateFPToSI(
+                    builder.CreateCall(f, {a, b}), builder.getInt32Ty());
+            }
+            if (name == "max") {
+                llvm::Value* a = genExpr(node.args[0]);
+                llvm::Value* b = genExpr(node.args[1]);
+                return builder.CreateSelect(
+                    builder.CreateICmpSGT(a, b), a, b);
+            }
+            if (name == "min") {
+                llvm::Value* a = genExpr(node.args[0]);
+                llvm::Value* b = genExpr(node.args[1]);
+                return builder.CreateSelect(
+                    builder.CreateICmpSLT(a, b), a, b);
+            }
+        }
         if (funcs.count(node.varName)) {
             std::vector<llvm::Value*> argVals;
             for (const Node& a : node.args)
@@ -19,6 +68,55 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             return builder.CreateCall(funcs[node.varName], argVals);
         }
         return builder.getInt32(0);
+    }
+    // встроенные математические функции
+    if (node.type == NODE_FUNC_CALL &&
+        (node.varName == "sqrt" || node.varName == "abs" ||
+         node.varName == "pow"  || node.varName == "max" ||
+         node.varName == "min")) {
+        std::string name = node.varName;
+        if (name == "sqrt") {
+            llvm::FunctionType* ft =
+                llvm::FunctionType::get(builder.getDoubleTy(),
+                    {builder.getDoubleTy()}, false);
+            llvm::Function* f = module.getFunction("sqrt");
+            if (!f) f = llvm::Function::Create(ft,
+                llvm::Function::ExternalLinkage, "sqrt", module);
+            llvm::Value* arg = genExpr(node.args[0]);
+            arg = builder.CreateSIToFP(arg, builder.getDoubleTy());
+            llvm::Value* res = builder.CreateCall(f, {arg});
+            return builder.CreateFPToSI(res, builder.getInt32Ty());
+        }
+        if (name == "abs") {
+            llvm::Value* arg = genExpr(node.args[0]);
+            llvm::Value* neg = builder.CreateNeg(arg);
+            llvm::Value* cmp = builder.CreateICmpSLT(arg, builder.getInt32(0));
+            return builder.CreateSelect(cmp, neg, arg);
+        }
+        if (name == "pow") {
+            llvm::FunctionType* ft =
+                llvm::FunctionType::get(builder.getDoubleTy(),
+                    {builder.getDoubleTy(), builder.getDoubleTy()}, false);
+            llvm::Function* f = module.getFunction("pow");
+            if (!f) f = llvm::Function::Create(ft,
+                llvm::Function::ExternalLinkage, "pow", module);
+            llvm::Value* a = builder.CreateSIToFP(genExpr(node.args[0]), builder.getDoubleTy());
+            llvm::Value* b = builder.CreateSIToFP(genExpr(node.args[1]), builder.getDoubleTy());
+            llvm::Value* res = builder.CreateCall(f, {a, b});
+            return builder.CreateFPToSI(res, builder.getInt32Ty());
+        }
+        if (name == "max") {
+            llvm::Value* a = genExpr(node.args[0]);
+            llvm::Value* b = genExpr(node.args[1]);
+            llvm::Value* cmp = builder.CreateICmpSGT(a, b);
+            return builder.CreateSelect(cmp, a, b);
+        }
+        if (name == "min") {
+            llvm::Value* a = genExpr(node.args[0]);
+            llvm::Value* b = genExpr(node.args[1]);
+            llvm::Value* cmp = builder.CreateICmpSLT(a, b);
+            return builder.CreateSelect(cmp, a, b);
+        }
     }
     if (node.type == NODE_FILE_OPEN) {
         llvm::FunctionType* fopenType =

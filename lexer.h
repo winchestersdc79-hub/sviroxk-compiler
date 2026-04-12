@@ -28,6 +28,7 @@ enum TokenType {
     PLUS, MINUS, STAR, SLASH, AMP,
     PTR,
     ATK, ZAP, PRO, ZAK, FILE_T,
+    SQRT, ABS, POW, MAX, MIN,
     // Сравнения
     GT, LT, EQ, NEQ,
     // Значения
