@@ -1,5 +1,6 @@
-fucn privet() {
-    slov("привет из функции");
+tip Player {
+    rox health = 100;
+    rox speed = 5;
 };
-
-cop privet();
+slov(Player_health);
+slov(Player_speed);

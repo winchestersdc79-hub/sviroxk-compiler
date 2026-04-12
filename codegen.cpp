@@ -45,6 +45,18 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
     }
+    else if (node.type == NODE_STRUCT_DEF) {
+        // сохраняем структуру как набор переменных с префиксом
+        for (const Node& field : node.children) {
+            std::string fullName = node.varName + "_" + field.varName;
+            llvm::AllocaInst* alloca =
+                builder.CreateAlloca(builder.getInt32Ty(),
+                    nullptr, fullName);
+            llvm::Value* val = genExpr(*field.left);
+            builder.CreateStore(val, alloca);
+            vars[fullName] = alloca;
+        }
+    }
     else if (node.type == NODE_FUNC_DEF) {
         llvm::FunctionType* ft =
             llvm::FunctionType::get(builder.getInt32Ty(), false);

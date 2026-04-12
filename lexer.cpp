@@ -9,9 +9,9 @@ std::vector<Token> tokenize(const std::string& code) {
     while (i < code.size()) {
         if (isspace(code[i])) { i++; continue; }
 
-        if (isalpha(code[i])) {
+        if (isalpha(code[i]) || code[i] == '_') {
             std::string word;
-            while (i < code.size() && isalnum(code[i]))
+            while (i < code.size() && (isalnum(code[i]) || code[i] == '_'))
                 word += code[i++];
 
             if      (word == "svi")  tokens.push_back({SVI,  word});

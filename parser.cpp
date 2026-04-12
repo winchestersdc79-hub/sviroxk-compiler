@@ -83,6 +83,26 @@ Node parseOne(const std::vector<Token>& tokens) {
         expect(tokens, SEMICOLON);
         return node;
     }
+    if (peek(tokens).type == TIP) {
+        Node node;
+        node.type = NODE_STRUCT_DEF;
+        consume(tokens); // tip
+        node.varName = consume(tokens).value; // имя
+        expect(tokens, LBRACE);
+        while (peek(tokens).type != RBRACE && peek(tokens).type != END) {
+            Node field;
+            field.type = NODE_VAR_DECL;
+            field.varType = consume(tokens).value; // тип
+            field.varName = consume(tokens).value; // имя
+            expect(tokens, EQUALS);
+            field.left = new Node(parseExpr(tokens));
+            expect(tokens, SEMICOLON);
+            node.children.push_back(field);
+        }
+        expect(tokens, RBRACE);
+        expect(tokens, SEMICOLON);
+        return node;
+    }
     if (peek(tokens).type == FUCN) {
         Node node;
         node.type = NODE_FUNC_DEF;
