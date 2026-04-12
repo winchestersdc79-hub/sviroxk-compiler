@@ -29,6 +29,7 @@ enum TokenType {
     PTR,
     ATK, ZAP, PRO, ZAK, FILE_T,
     SQRT, ABS, POW, MAX, MIN,
+    VD,
     // Сравнения
     GT, LT, EQ, NEQ,
     // Значения

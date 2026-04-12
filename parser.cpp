@@ -43,6 +43,15 @@ Node parseExpr() {
         expect(RPAREN);
         return left;
     }
+    // vd — ввод с клавиатуры
+    if (peek().type == VD) {
+        consume();
+        Node left; left.type = NODE_INPUT;
+        expect(LPAREN);
+        left.value = consume().value;
+        expect(RPAREN);
+        return left;
+    }
     // atk — открыть файл
     if (peek().type == ATK) {
         consume();
@@ -247,6 +256,15 @@ Node parseOne() {
             left.args.push_back(parseExpr());
             if (peek().type == COMMA) consume();
         }
+        expect(RPAREN);
+        return left;
+    }
+    // vd — ввод с клавиатуры
+    if (peek().type == VD) {
+        consume();
+        Node left; left.type = NODE_INPUT;
+        expect(LPAREN);
+        left.value = consume().value;
         expect(RPAREN);
         return left;
     }

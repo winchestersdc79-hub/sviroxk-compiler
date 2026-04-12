@@ -118,6 +118,27 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             return builder.CreateSelect(cmp, a, b);
         }
     }
+    if (node.type == NODE_INPUT) {
+        llvm::FunctionType* printfType =
+            llvm::FunctionType::get(builder.getInt32Ty(),
+                {builder.getPtrTy()}, true);
+        llvm::Function* printfF = module.getFunction("printf");
+        if (!printfF) printfF = llvm::Function::Create(printfType,
+            llvm::Function::ExternalLinkage, "printf", module);
+        llvm::FunctionType* scanfType =
+            llvm::FunctionType::get(builder.getInt32Ty(),
+                {builder.getPtrTy()}, true);
+        llvm::Function* scanfF = module.getFunction("scanf");
+        if (!scanfF) scanfF = llvm::Function::Create(scanfType,
+            llvm::Function::ExternalLinkage, "scanf", module);
+        llvm::Value* prompt = getStringPtr(node.value);
+        builder.CreateCall(printfF, {prompt});
+        llvm::AllocaInst* tmp =
+            builder.CreateAlloca(builder.getInt32Ty(), nullptr, "input_tmp");
+        llvm::Value* fmt = getStringPtr("%d");
+        builder.CreateCall(scanfF, {fmt, tmp});
+        return builder.CreateLoad(builder.getInt32Ty(), tmp);
+    }
     if (node.type == NODE_FILE_OPEN) {
         llvm::FunctionType* fopenType =
             llvm::FunctionType::get(builder.getPtrTy(),

@@ -1,10 +1,2 @@
-svi rox lor a = sqrt(16);
-svi rox lor b = abs(-5);
-svi rox lor c = pow(2, 8);
-svi rox lor d = max(3, 7);
-svi rox lor e = min(3, 7);
-slov(a);
-slov(b);
-slov(c);
-slov(d);
-slov(e);
+svi rox lor x = vd("введи число: ");
+slov(x);
