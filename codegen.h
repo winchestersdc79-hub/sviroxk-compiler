@@ -14,7 +14,8 @@ public:
 
     CodeGen() : builder(context), module("sviroxk", context) {}
 
-    void generate(const Node& node);
+    llvm::Value* genExpr(const Node& node);
+    void generate(const Node& program);
     void print();
 };
 
