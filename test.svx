@@ -1,3 +1,6 @@
-svi rox lor x = 5 + 3;
-slov("результат:");
-slov(x);
+svi rox lor x = 10;
+eles (x > 5) {
+    slov("x больше 5");
+} sele {
+    slov("x меньше 5");
+};

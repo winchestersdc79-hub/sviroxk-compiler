@@ -11,7 +11,8 @@ enum NodeType {
     NODE_IDENTIFIER,
     NODE_SLOV,
     NODE_BINOP,
-    NODE_PROGRAM,  // весь файл
+    NODE_PROGRAM,
+    NODE_IF,
 };
 
 struct Node {
@@ -22,7 +23,8 @@ struct Node {
     std::string op;
     Node* left = nullptr;
     Node* right = nullptr;
-    std::vector<Node> children;  // список инструкций
+    std::vector<Node> children;
+    std::vector<Node> elseChildren;
 };
 
 Node parse(const std::vector<Token>& tokens);
