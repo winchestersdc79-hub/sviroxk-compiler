@@ -83,6 +83,15 @@ Node parseOne(const std::vector<Token>& tokens) {
         expect(tokens, SEMICOLON);
         return node;
     }
+    if (peek(tokens).type == IDENTIFIER && tokens[pos+1].type == EQUALS) {
+        Node node;
+        node.type = NODE_ASSIGN;
+        node.varName = consume(tokens).value;
+        consume(tokens); // =
+        node.left = new Node(parseExpr(tokens));
+        expect(tokens, SEMICOLON);
+        return node;
+    }
     if (peek(tokens).type == CERT) {
         Node node;
         consume(tokens); // cert

@@ -45,6 +45,13 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
     }
+    else if (node.type == NODE_ASSIGN) {
+        llvm::AllocaInst* alloca = vars[node.varName];
+        if (alloca) {
+            llvm::Value* val = genExpr(*node.left);
+            builder.CreateStore(val, alloca);
+        }
+    }
     else if (node.type == NODE_LOOP_N) {
         llvm::Value* count = genExpr(*node.left);
         llvm::Function* func = builder.GetInsertBlock()->getParent();

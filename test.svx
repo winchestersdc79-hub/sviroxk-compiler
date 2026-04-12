@@ -1,3 +1,5 @@
-cert ceh (3) {
-    slov("привет от SVIROXK");
+svi rox lor x = 0;
+cert usy (x < 3) {
+    slov(x);
+    x = x + 1;
 };
