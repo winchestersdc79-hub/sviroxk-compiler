@@ -13,6 +13,8 @@ enum NodeType {
     NODE_BINOP,
     NODE_PROGRAM,
     NODE_IF,
+    NODE_LOOP_N,
+    NODE_LOOP_W,
 };
 
 struct Node {

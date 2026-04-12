@@ -45,6 +45,42 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
     }
+    else if (node.type == NODE_LOOP_N) {
+        llvm::Value* count = genExpr(*node.left);
+        llvm::Function* func = builder.GetInsertBlock()->getParent();
+        llvm::AllocaInst* i = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "i");
+        builder.CreateStore(builder.getInt32(0), i);
+        llvm::BasicBlock* loopBlock = llvm::BasicBlock::Create(context, "loop", func);
+        llvm::BasicBlock* afterBlock = llvm::BasicBlock::Create(context, "after", func);
+        builder.CreateBr(loopBlock);
+        builder.SetInsertPoint(loopBlock);
+        llvm::Value* cur = builder.CreateLoad(builder.getInt32Ty(), i);
+        llvm::Value* cond = builder.CreateICmpSLT(cur, count);
+        llvm::BasicBlock* bodyBlock = llvm::BasicBlock::Create(context, "body", func);
+        builder.CreateCondBr(cond, bodyBlock, afterBlock);
+        builder.SetInsertPoint(bodyBlock);
+        for (const Node& n : node.children) genNode(n);
+        llvm::Value* next = builder.CreateAdd(cur, builder.getInt32(1));
+        builder.CreateStore(next, i);
+        builder.CreateBr(loopBlock);
+        builder.SetInsertPoint(afterBlock);
+    }
+    else if (node.type == NODE_LOOP_W) {
+        llvm::Function* func = builder.GetInsertBlock()->getParent();
+        llvm::BasicBlock* condBlock = llvm::BasicBlock::Create(context, "cond", func);
+        llvm::BasicBlock* bodyBlock = llvm::BasicBlock::Create(context, "body", func);
+        llvm::BasicBlock* afterBlock = llvm::BasicBlock::Create(context, "after", func);
+        builder.CreateBr(condBlock);
+        builder.SetInsertPoint(condBlock);
+        llvm::Value* cond = genExpr(*node.left);
+        if (cond->getType() == builder.getInt32Ty())
+            cond = builder.CreateICmpNE(cond, builder.getInt32(0));
+        builder.CreateCondBr(cond, bodyBlock, afterBlock);
+        builder.SetInsertPoint(bodyBlock);
+        for (const Node& n : node.children) genNode(n);
+        builder.CreateBr(condBlock);
+        builder.SetInsertPoint(afterBlock);
+    }
     else if (node.type == NODE_IF) {
         llvm::Value* cond = genExpr(*node.left);
         if (cond->getType() == builder.getInt32Ty())

@@ -83,6 +83,30 @@ Node parseOne(const std::vector<Token>& tokens) {
         expect(tokens, SEMICOLON);
         return node;
     }
+    if (peek(tokens).type == CERT) {
+        Node node;
+        consume(tokens); // cert
+        Token kind = consume(tokens); // ceh или usy
+        node.type = (kind.type == CEH) ? NODE_LOOP_N : NODE_LOOP_W;
+        expect(tokens, LPAREN);
+        node.left = new Node(parseExpr(tokens));
+        if (node.type == NODE_LOOP_W) {
+            Token op = consume(tokens);
+            Node right = parseExpr(tokens);
+            Node* cond = new Node();
+            cond->type = NODE_BINOP;
+            cond->op = op.value;
+            cond->left = node.left;
+            cond->right = new Node(right);
+            node.left = cond;
+        }
+        expect(tokens, RPAREN);
+        expect(tokens, LBRACE);
+        node.children = parseBlock(tokens);
+        expect(tokens, RBRACE);
+        expect(tokens, SEMICOLON);
+        return node;
+    }
     if (peek(tokens).type == ELES) {
         Node node;
         node.type = NODE_IF;

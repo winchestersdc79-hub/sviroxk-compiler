@@ -1,6 +1,3 @@
-svi rox lor x = 10;
-eles (x > 5) {
-    slov("x больше 5");
-} sele {
-    slov("x меньше 5");
+cert ceh (3) {
+    slov("привет от SVIROXK");
 };
