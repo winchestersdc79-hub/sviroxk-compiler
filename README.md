@@ -1,71 +1,82 @@
-# sviroxk
+# SVIROXK
 
-## About
-sviroxk — это разрабатываемый язык программирования и компилятор, создаваемый с нуля. Проект следует классической модели разработки языков: сначала компилятор реализуется на C++ (bootstrap), а затем язык развивается до уровня self-hosting, где он сможет компилировать сам себя.
+SVIROXK — язык программирования созданный с нуля. Компилятор написан на C++ с использованием LLVM для генерации машинного кода.
 
-## Goal
-Главная цель проекта — создать независимый язык программирования, собственный компилятор и полностью самодостаточную систему. После перехода на self-hosting C++ больше не будет использоваться.
+## Цель
 
-## Development Stages
+Создать полностью независимый язык программирования, компилятор и игровой движок. После самохостинга C++ больше не будет нужен.
 
-### Stage 1 — Bootstrap (Current)
-Компилятор написан на C++. Реализуется базовый синтаксис, lexer, parser и основная архитектура.
+## Этапы разработки
 
-### Stage 2 — Language Growth
-Добавление переменных, типов, функций, улучшение синтаксиса и стабильности.
+- **Этап 1 — Компилятор на C++** (текущий) — базовый синтаксис, лексер, парсер, генерация кода
+- **Этап 2 — Самохостинг** — компилятор переписывается на SVIROXK
+- **Этап 3 — Игровой движок** — движок написан на SVIROXK
+- **Этап 4 — Игра** — игра на своём движке
 
-### Stage 3 — Self-hosting (Target)
-Компилятор переписывается на sviroxk, язык компилирует сам себя, C++ больше не нужен.
+## Синтаксис
 
-## Compiler Architecture
-- Lexer — разбиение кода на токены
-- Parser — построение структуры программы
-- AST — абстрактное синтаксическое дерево
-- Code Generation — генерация кода
-
-## Build
-g++ -o sviroxk main.cpp
-
-## Usage
-./sviroxk program.svx
-
-## Project Structure
-sviroxk/
-├── src/
-├── lexer/
-├── parser/
-├── codegen/
-├── include/
-└── main.cpp
-
-## Example
-func main() {
-print("Hello, sviroxk")
+### Переменные
+svi rox lor x = 5;
+svi dor lor y = 3.14;
+svi cos lor name = "SVIROXK";
+svi bue lor flag = true;
+### Массивы
+svi rox[] lor arr = [1, 2, 3];
+slov(arr[0]);
+### Условия
+eles (x > 5) {
+slov("больше");
+} sele {
+slov("меньше");
 }
+### Циклы
+cert ceh (10) {
+slov("повтор");
+}
+cert usy (x < 10) {
+x = x + 1;
+}
+### Функции
+fucn add(rox a, rox b) {
+rev a + b;
+}
+svi rox lor result = cop add(5, 3);
+### Структуры
+tip Player {
+rox health = 100;
+rox speed = 5;
+}
+### Указатели
+svi rox lor x = 5;
+svi ptr lor p = &x;
+*p = 10;
+slov(*p);
+### Файлы
+svi file lor f = atk("file.txt");
+zap(f, "текст");
+zak(f);
+## Типы данных
 
-## Status
-Проект на ранней стадии разработки. Синтаксис и архитектура могут изменяться.
+| SVIROXK | C++ | Описание |
+|---------|-----|----------|
+| rox | int | целое число |
+| dor | float | дробное число |
+| cos | string | текст |
+| bue | bool | булево |
+| ptr | * | указатель |
+| file | FILE* | файл |
 
-## Roadmap
-- Базовый синтаксис
-- Переменные
-- Типы данных
-- Функции
-- AST
-- Генерация кода
-- Self-hosting компилятор
+## Сборка компилятора
 
-## License
-This project uses a custom restrictive license.
-
-Usage Terms:
-- Only personal and educational use allowed
-- No modification allowed
-- No distribution allowed
-- No commercial use allowed
-
-Disclaimer:
-Provided "as is" without warranty.
-
-## Notes
-C++ используется только как временный bootstrap. Основная цель — полный переход на sviroxk и self-hosting.
+```bash
+clang++ main.cpp lexer.cpp parser.cpp codegen.cpp \
+  -I/path/to/llvm/include \
+  $(llvm-config --cxxflags --ldflags --libs) \
+  -fexceptions -o sviroxk
+Запуск программы
+./sviroxk program.svx > output.ll
+llc output.ll -o output.s
+clang output.s -o program
+./program
+Автор
+winchestersdc79-hub — создан с нуля на телефоне через Termux
