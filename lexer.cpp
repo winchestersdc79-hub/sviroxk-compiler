@@ -79,7 +79,7 @@ std::vector<Token> tokenize(const std::string& code) {
             case ')': tokens.push_back({RPAREN,   ")"}); break;
             case '{': tokens.push_back({LBRACE,   "{"}); break;
             case '}': tokens.push_back({RBRACE,   "}"}); break;
-            case ',': tokens.push_back({COMMA,    ","});
+            case ',': tokens.push_back({COMMA,    ","}); break;
             case '[': tokens.push_back({LBRACKET, "["}); break;
             case ']': tokens.push_back({RBRACKET, "]"}); break;
             default:
