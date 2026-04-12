@@ -63,6 +63,7 @@ Node parseOne(const std::vector<Token>& tokens) {
         expect(tokens, LPAREN);
         Token val = consume(tokens);
         node.value = val.value;
+        if (val.type == IDENTIFIER) node.left = new Node({NODE_IDENTIFIER, val.value});
         expect(tokens, RPAREN);
         expect(tokens, SEMICOLON);
         return node;

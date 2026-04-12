@@ -5,12 +5,14 @@
 #include <llvm/IR/IRBuilder.h>
 #include <llvm/IR/LLVMContext.h>
 #include <llvm/IR/Module.h>
+#include <map>
 
 class CodeGen {
 public:
     llvm::LLVMContext context;
     llvm::IRBuilder<> builder;
     llvm::Module module;
+    std::map<std::string, llvm::AllocaInst*> vars;
 
     CodeGen() : builder(context), module("sviroxk", context) {}
 
