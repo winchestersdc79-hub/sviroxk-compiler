@@ -1,44 +1,43 @@
 	.file	"sviroxk"
 	.text
+	.globl	square                          // -- Begin function square
+	.p2align	2
+	.type	square,@function
+square:                                 // @square
+	.cfi_startproc
+// %bb.0:                               // %entry
+	sub	sp, sp, #16
+	.cfi_def_cfa_offset 16
+	mov	w8, w0
+	mul	w0, w0, w0
+	str	w8, [sp, #12]
+	add	sp, sp, #16
+	ret
+.Lfunc_end0:
+	.size	square, .Lfunc_end0-square
+	.cfi_endproc
+                                        // -- End function
 	.globl	main                            // -- Begin function main
 	.p2align	2
 	.type	main,@function
 main:                                   // @main
 	.cfi_startproc
 // %bb.0:                               // %entry
-	sub	sp, sp, #32
-	stp	x30, x19, [sp, #16]             // 16-byte Folded Spill
-	.cfi_def_cfa_offset 32
-	.cfi_offset w19, -8
+	str	x30, [sp, #-16]!                // 8-byte Folded Spill
+	.cfi_def_cfa_offset 16
 	.cfi_offset w30, -16
-	adrp	x19, .L__unnamed_1
-	add	x19, x19, :lo12:.L__unnamed_1
-	str	wzr, [sp, #12]
-.LBB0_1:                                // %cond
-                                        // =>This Inner Loop Header: Depth=1
-	ldr	w8, [sp, #12]
-	cmp	w8, #9
-	b.gt	.LBB0_4
-// %bb.2:                               // %body
-                                        //   in Loop: Header=BB0_1 Depth=1
-	ldr	w8, [sp, #12]
-	add	w8, w8, #1
-	cmp	w8, #5
-	str	w8, [sp, #12]
-	b.eq	.LBB0_1
-// %bb.3:                               // %merge
-                                        //   in Loop: Header=BB0_1 Depth=1
-	ldr	w1, [sp, #12]
-	mov	x0, x19
+	mov	w0, #5                          // =0x5
+	bl	square
+	mov	w1, w0
+	str	w0, [sp, #12]
+	adrp	x0, .L__unnamed_1
+	add	x0, x0, :lo12:.L__unnamed_1
 	bl	printf
-	b	.LBB0_1
-.LBB0_4:                                // %after
-	ldp	x30, x19, [sp, #16]             // 16-byte Folded Reload
 	mov	w0, wzr
-	add	sp, sp, #32
+	ldr	x30, [sp], #16                  // 8-byte Folded Reload
 	ret
-.Lfunc_end0:
-	.size	main, .Lfunc_end0-main
+.Lfunc_end1:
+	.size	main, .Lfunc_end1-main
 	.cfi_endproc
                                         // -- End function
 	.type	.L__unnamed_1,@object           // @0

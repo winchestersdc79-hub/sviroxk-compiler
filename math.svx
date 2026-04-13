@@ -1,0 +1,3 @@
+fucn square(rox x) {
+    rev x * x;
+}

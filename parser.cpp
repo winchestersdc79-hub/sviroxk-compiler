@@ -454,7 +454,15 @@ Node parse(const std::vector<Token>& tokens) {
     Node program;
     program.type = NODE_PROGRAM;
     while (peek().type != END) {
-        program.children.push_back(parseOne());
+        if (peek().type == IMP) {
+            consume();
+            Node node; node.type = NODE_IMPORT;
+            node.value = consume().value; // имя файла
+            expect(SEMICOLON);
+            program.children.push_back(node);
+        } else {
+            program.children.push_back(parseOne());
+        }
     }
     return program;
 }

@@ -30,6 +30,7 @@ enum NodeType {
     NODE_DELETE,
     NODE_BREAK,
     NODE_CONTINUE,
+    NODE_IMPORT,
     NODE_FILE_OPEN,
     NODE_INPUT,
     NODE_STRLEN,

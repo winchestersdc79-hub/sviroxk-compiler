@@ -7,36 +7,22 @@ declare i32 @puts(ptr)
 
 declare i32 @printf(ptr, ...)
 
+define i32 @square(i32 %x) {
+entry:
+  %x1 = alloca i32, align 4
+  store i32 %x, ptr %x1, align 4
+  %0 = load i32, ptr %x1, align 4
+  %1 = load i32, ptr %x1, align 4
+  %2 = mul i32 %0, %1
+  ret i32 %2
+}
+
 define i32 @main() {
 entry:
-  %i = alloca i32, align 4
-  store i32 0, ptr %i, align 4
-  br label %cond
-
-cond:                                             ; preds = %merge, %then, %entry
-  %0 = load i32, ptr %i, align 4
-  %1 = icmp slt i32 %0, 10
-  br i1 %1, label %body, label %after
-
-body:                                             ; preds = %cond
-  %2 = load i32, ptr %i, align 4
-  %3 = add i32 %2, 1
-  store i32 %3, ptr %i, align 4
-  %4 = load i32, ptr %i, align 4
-  %5 = icmp eq i32 %4, 5
-  br i1 %5, label %then, label %else
-
-after:                                            ; preds = %cond
+  %result = alloca i32, align 4
+  %0 = call i32 @square(i32 5)
+  store i32 %0, ptr %result, align 4
+  %1 = load i32, ptr %result, align 4
+  %2 = call i32 (ptr, ...) @printf(ptr @0, i32 %1)
   ret i32 0
-
-then:                                             ; preds = %body
-  br label %cond
-
-else:                                             ; preds = %body
-  br label %merge
-
-merge:                                            ; preds = %else
-  %6 = load i32, ptr %i, align 4
-  %7 = call i32 (ptr, ...) @printf(ptr @0, i32 %6)
-  br label %cond
 }
