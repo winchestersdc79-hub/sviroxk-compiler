@@ -1,3 +1,8 @@
-svi rox[] lor arr = [1, 2, 3];
+svi ptr lor arr = nw rox[5];
 arr[0] = 10;
+arr[1] = 20;
+arr[2] = 30;
 slov(arr[0]);
+slov(arr[1]);
+slov(arr[2]);
+del arr;

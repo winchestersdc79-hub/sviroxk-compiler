@@ -42,6 +42,8 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "max")  tokens.push_back({MAX,  word});
             else if (word == "min")  tokens.push_back({MIN,  word});
             else if (word == "vd")  tokens.push_back({VD,  word});
+            else if (word == "nw")  tokens.push_back({NW,  word});
+            else if (word == "del") tokens.push_back({DEL, word});
             else if (word == "ar")  tokens.push_back({AR,  word});
             else if (word == "chr") tokens.push_back({CHR, word});
             else if (word == "rox64") tokens.push_back({ROX64, word});

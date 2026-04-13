@@ -62,6 +62,16 @@ Node parseExpr() {
         expect(RPAREN);
         return left;
     }
+    // nw — создать динамический массив
+    if (peek().type == NW) {
+        consume();
+        Node left; left.type = NODE_DYN_ARRAY;
+        left.varType = consume().value; // тип (rox etc)
+        expect(LBRACKET);
+        left.left = new Node(parseExpr()); // размер
+        expect(RBRACKET);
+        return left;
+    }
     // atk — открыть файл
     if (peek().type == ATK) {
         consume();
@@ -284,7 +294,25 @@ Node parseOne() {
         expect(RPAREN);
         return left;
     }
+    // nw — создать динамический массив
+    if (peek().type == NW) {
+        consume();
+        Node left; left.type = NODE_DYN_ARRAY;
+        left.varType = consume().value; // тип (rox etc)
+        expect(LBRACKET);
+        left.left = new Node(parseExpr()); // размер
+        expect(RBRACKET);
+        return left;
+    }
     // atk — открыть файл (используется в parseExpr через svi)
+    // del — удалить массив
+    if (peek().type == DEL) {
+        Node node; node.type = NODE_DELETE;
+        consume();
+        node.varName = consume().value;
+        expect(SEMICOLON);
+        return node;
+    }
     // zap — записать в файл
     if (peek().type == ZAP) {
         Node node; node.type = NODE_FILE_WRITE;

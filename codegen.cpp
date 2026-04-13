@@ -37,6 +37,17 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         return builder.getInt32(0);
     }
     if (node.type == NODE_ARRAY_ACCESS) {
+        // динамический массив через ptr
+        if (vars.count(node.varName) &&
+            vars[node.varName]->getAllocatedType()->isPointerTy()) {
+            llvm::Value* ptr = builder.CreateLoad(
+                builder.getPtrTy(), vars[node.varName]);
+            llvm::Value* idx = genExpr(*node.left);
+            llvm::Value* gep = builder.CreateGEP(
+                builder.getInt32Ty(), ptr, {idx});
+            return builder.CreateLoad(builder.getInt32Ty(), gep);
+        }
+        // статический массив
         int idx = std::stoi(node.left->value);
         std::string name = node.varName + "_" + std::to_string(idx);
         llvm::AllocaInst* alloca = vars[name];
@@ -55,6 +66,19 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             return builder.CreateLoad(builder.getInt32Ty(), ptr);
         }
         return builder.getInt32(0);
+    }
+    if (node.type == NODE_DYN_ARRAY) {
+        llvm::FunctionType* mallocType =
+            llvm::FunctionType::get(builder.getPtrTy(),
+                {builder.getInt64Ty()}, false);
+        llvm::Function* mallocF = module.getFunction("malloc");
+        if (!mallocF) mallocF = llvm::Function::Create(mallocType,
+            llvm::Function::ExternalLinkage, "malloc", module);
+        llvm::Value* size = genExpr(*node.left);
+        size = builder.CreateSExt(size, builder.getInt64Ty());
+        llvm::Value* bytes = builder.CreateMul(size,
+            builder.getInt64(4)); // 4 байта на int
+        return builder.CreateCall(mallocF, {bytes});
     }
     if (node.type == NODE_FILE_OPEN) {
         llvm::FunctionType* fopenType =
@@ -238,12 +262,21 @@ void CodeGen::genNode(const Node& node) {
     }
     else if (node.type == NODE_ARRAY_ASSIGN) {
         if (node.left && node.right) {
-            int idx = std::stoi(node.left->value);
-            std::string name = node.varName + "_" + std::to_string(idx);
-            llvm::AllocaInst* alloca = vars[name];
-            if (alloca) {
-                llvm::Value* val = genExpr(*node.right);
-                builder.CreateStore(val, alloca);
+            // динамический массив
+            if (vars.count(node.varName) &&
+                vars[node.varName]->getAllocatedType()->isPointerTy()) {
+                llvm::Value* ptr = builder.CreateLoad(
+                    builder.getPtrTy(), vars[node.varName]);
+                llvm::Value* idx = genExpr(*node.left);
+                llvm::Value* gep = builder.CreateGEP(
+                    builder.getInt32Ty(), ptr, {idx});
+                builder.CreateStore(genExpr(*node.right), gep);
+            } else {
+                // статический массив
+                int idx = std::stoi(node.left->value);
+                std::string name = node.varName + "_" + std::to_string(idx);
+                llvm::AllocaInst* alloca = vars[name];
+                if (alloca) builder.CreateStore(genExpr(*node.right), alloca);
             }
         }
     }
@@ -316,6 +349,19 @@ void CodeGen::genNode(const Node& node) {
             for (const Node& a : node.args)
                 argVals.push_back(genExpr(a));
             builder.CreateCall(funcs[node.varName], argVals);
+        }
+    }
+    else if (node.type == NODE_DELETE) {
+        llvm::FunctionType* freeType =
+            llvm::FunctionType::get(builder.getVoidTy(),
+                {builder.getPtrTy()}, false);
+        llvm::Function* freeF = module.getFunction("free");
+        if (!freeF) freeF = llvm::Function::Create(freeType,
+            llvm::Function::ExternalLinkage, "free", module);
+        llvm::AllocaInst* alloca = vars[node.varName];
+        if (alloca) {
+            llvm::Value* ptr = builder.CreateLoad(builder.getPtrTy(), alloca);
+            builder.CreateCall(freeF, {ptr});
         }
     }
     else if (node.type == NODE_FILE_WRITE) {
