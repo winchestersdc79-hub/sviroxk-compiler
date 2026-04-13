@@ -305,6 +305,20 @@ Node parseOne() {
         return left;
     }
     // atk — открыть файл (используется в parseExpr через svi)
+    // brk — выход из цикла
+    if (peek().type == BRK) {
+        consume();
+        expect(SEMICOLON);
+        Node node; node.type = NODE_BREAK;
+        return node;
+    }
+    // cont — следующая итерация
+    if (peek().type == CONT) {
+        consume();
+        expect(SEMICOLON);
+        Node node; node.type = NODE_CONTINUE;
+        return node;
+    }
     // del — удалить массив
     if (peek().type == DEL) {
         Node node; node.type = NODE_DELETE;

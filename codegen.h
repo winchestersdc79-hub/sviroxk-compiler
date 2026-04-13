@@ -15,6 +15,8 @@ public:
     llvm::Module module;
     std::map<std::string, llvm::AllocaInst*> vars;
     std::map<std::string, llvm::Function*> funcs;
+    llvm::BasicBlock* breakBlock = nullptr;
+    llvm::BasicBlock* continueBlock = nullptr;
     llvm::Function* putsFunc = nullptr;
     llvm::Function* printfFunc = nullptr;
 

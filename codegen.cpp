@@ -290,6 +290,12 @@ void CodeGen::genNode(const Node& node) {
     else if (node.type == NODE_RETURN) {
         builder.CreateRet(genExpr(*node.left));
     }
+    else if (node.type == NODE_BREAK) {
+        if (breakBlock) builder.CreateBr(breakBlock);
+    }
+    else if (node.type == NODE_CONTINUE) {
+        if (continueBlock) builder.CreateBr(continueBlock);
+    }
     else if (node.type == NODE_ARRAY_DECL) {
         int idx = 0;
         for (const Node& elem : node.args) {
@@ -410,10 +416,12 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateCondBr(cond, thenBlock, elseBlock);
         builder.SetInsertPoint(thenBlock);
         for (const Node& n : node.children) genNode(n);
-        builder.CreateBr(mergeBlock);
+        if (!builder.GetInsertBlock()->getTerminator())
+            builder.CreateBr(mergeBlock);
         builder.SetInsertPoint(elseBlock);
         for (const Node& n : node.elseChildren) genNode(n);
-        builder.CreateBr(mergeBlock);
+        if (!builder.GetInsertBlock()->getTerminator())
+            builder.CreateBr(mergeBlock);
         builder.SetInsertPoint(mergeBlock);
     }
     else if (node.type == NODE_LOOP_N) {
@@ -426,19 +434,27 @@ void CodeGen::genNode(const Node& node) {
             llvm::BasicBlock::Create(context, "loop", func);
         llvm::BasicBlock* afterBlock =
             llvm::BasicBlock::Create(context, "after", func);
+        llvm::BasicBlock* bodyBlock =
+            llvm::BasicBlock::Create(context, "body", func);
+        auto savedBreak = breakBlock;
+        auto savedContinue = continueBlock;
+        breakBlock = afterBlock;
+        continueBlock = loopBlock;
         builder.CreateBr(loopBlock);
         builder.SetInsertPoint(loopBlock);
         llvm::Value* cur = builder.CreateLoad(builder.getInt32Ty(), i);
         llvm::Value* cond = builder.CreateICmpSLT(cur, count);
-        llvm::BasicBlock* bodyBlock =
-            llvm::BasicBlock::Create(context, "body", func);
         builder.CreateCondBr(cond, bodyBlock, afterBlock);
         builder.SetInsertPoint(bodyBlock);
         for (const Node& n : node.children) genNode(n);
-        llvm::Value* next = builder.CreateAdd(cur, builder.getInt32(1));
-        builder.CreateStore(next, i);
-        builder.CreateBr(loopBlock);
+        if (!builder.GetInsertBlock()->getTerminator()) {
+            llvm::Value* next = builder.CreateAdd(cur, builder.getInt32(1));
+            builder.CreateStore(next, i);
+            builder.CreateBr(loopBlock);
+        }
         builder.SetInsertPoint(afterBlock);
+        breakBlock = savedBreak;
+        continueBlock = savedContinue;
     }
     else if (node.type == NODE_LOOP_W) {
         llvm::Function* func = builder.GetInsertBlock()->getParent();
@@ -448,6 +464,10 @@ void CodeGen::genNode(const Node& node) {
             llvm::BasicBlock::Create(context, "body", func);
         llvm::BasicBlock* afterBlock =
             llvm::BasicBlock::Create(context, "after", func);
+        auto savedBreak = breakBlock;
+        auto savedContinue = continueBlock;
+        breakBlock = afterBlock;
+        continueBlock = condBlock;
         builder.CreateBr(condBlock);
         builder.SetInsertPoint(condBlock);
         llvm::Value* cond = genExpr(*node.left);
@@ -456,8 +476,11 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateCondBr(cond, bodyBlock, afterBlock);
         builder.SetInsertPoint(bodyBlock);
         for (const Node& n : node.children) genNode(n);
-        builder.CreateBr(condBlock);
+        if (!builder.GetInsertBlock()->getTerminator())
+            builder.CreateBr(condBlock);
         builder.SetInsertPoint(afterBlock);
+        breakBlock = savedBreak;
+        continueBlock = savedContinue;
     }
 }
 
