@@ -12,7 +12,11 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
     if (node.type == NODE_NUMBER) {
         if (node.value.find('.') != std::string::npos)
             return llvm::ConstantFP::get(builder.getDoubleTy(), std::stod(node.value));
-        return builder.getInt32(std::stoi(node.value));
+        try {
+            return builder.getInt32(std::stoi(node.value));
+        } catch (...) {
+            return builder.getInt64(std::stoll(node.value));
+        }
     }
     if (node.type == NODE_STRING)
         return getStringPtr(node.value);
@@ -26,6 +30,8 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
                 return builder.CreateLoad(builder.getDoubleTy(), alloca);
             if (ty->isIntegerTy(8))
                 return builder.CreateLoad(builder.getInt8Ty(), alloca);
+            if (ty->isIntegerTy(64))
+                return builder.CreateLoad(builder.getInt64Ty(), alloca);
             return builder.CreateLoad(builder.getInt32Ty(), alloca);
         }
         return builder.getInt32(0);
@@ -192,6 +198,9 @@ void CodeGen::genNode(const Node& node) {
             } else if (val->getType()->isIntegerTy(8)) {
                 llvm::Value* fmt = getStringPtr("%c\n");
                 builder.CreateCall(printfFunc, {fmt, val});
+            } else if (val->getType()->isIntegerTy(64)) {
+                llvm::Value* fmt = getStringPtr("%lld\n");
+                builder.CreateCall(printfFunc, {fmt, val});
             } else {
                 llvm::Value* fmt = getStringPtr("%d\n");
                 builder.CreateCall(printfFunc, {fmt, val});
@@ -209,6 +218,8 @@ void CodeGen::genNode(const Node& node) {
             ty = builder.getDoubleTy();
         else if (node.varType == "chr")
             ty = builder.getInt8Ty();
+        else if (node.varType == "rox64")
+            ty = builder.getInt64Ty();
         else
             ty = builder.getInt32Ty();
         llvm::AllocaInst* alloca =

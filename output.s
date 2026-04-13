@@ -6,14 +6,14 @@
 main:                                   // @main
 	.cfi_startproc
 // %bb.0:                               // %entry
-	str	x30, [sp, #-16]!                // 8-byte Folded Spill
 	.cfi_def_cfa_offset 16
 	.cfi_offset w30, -16
-	mov	w8, #65                         // =0x41
+	mov	x1, #58367                      // =0xe3ff
+	movk	x1, #21515, lsl #16
+	movk	x1, #2, lsl #32
+	stp	x30, x1, [sp, #-16]!            // 8-byte Folded Spill
 	adrp	x0, .L__unnamed_1
 	add	x0, x0, :lo12:.L__unnamed_1
-	mov	w1, #65                         // =0x41
-	stur	w8, [sp, #15]
 	bl	printf
 	mov	w0, wzr
 	ldr	x30, [sp], #16                  // 8-byte Folded Reload
@@ -25,7 +25,7 @@ main:                                   // @main
 	.type	.L__unnamed_1,@object           // @0
 	.section	.rodata.str1.1,"aMS",@progbits,1
 .L__unnamed_1:
-	.asciz	"%c\n"
-	.size	.L__unnamed_1, 4
+	.asciz	"%lld\n"
+	.size	.L__unnamed_1, 6
 
 	.section	".note.GNU-stack","",@progbits

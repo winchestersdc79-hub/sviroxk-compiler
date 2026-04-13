@@ -29,7 +29,7 @@ enum TokenType {
     PTR,
     ATK, ZAP, PRO, ZAK, FILE_T,
     SQRT, ABS, POW, MAX, MIN,
-    CHR,
+    CHR, ROX64,
     AR,
     VD,
     // Сравнения

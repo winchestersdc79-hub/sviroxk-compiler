@@ -11,7 +11,7 @@ std::vector<Token> tokenize(const std::string& code) {
 
         if (isalpha(code[i]) || code[i] == '_') {
             std::string word;
-            while (i < code.size() && (isalnum(code[i]) || code[i] == '_'))
+            while (i < code.size() && (isalnum(code[i]) || code[i] == '_' || isdigit(code[i])))
                 word += code[i++];
 
             if      (word == "svi")  tokens.push_back({SVI,  word});
@@ -44,6 +44,7 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "vd")  tokens.push_back({VD,  word});
             else if (word == "ar")  tokens.push_back({AR,  word});
             else if (word == "chr") tokens.push_back({CHR, word});
+            else if (word == "rox64") tokens.push_back({ROX64, word});
             else tokens.push_back({IDENTIFIER, word});
             continue;
         }

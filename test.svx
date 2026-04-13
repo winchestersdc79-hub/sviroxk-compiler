@@ -1,2 +1,2 @@
-svi chr lor c = 'A';
-slov(c);
+svi rox64 lor x = 9999999999;
+slov(x);
