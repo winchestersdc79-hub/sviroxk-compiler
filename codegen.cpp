@@ -236,6 +236,17 @@ void CodeGen::genNode(const Node& node) {
         llvm::AllocaInst* alloca = vars[node.varName];
         if (alloca) builder.CreateStore(genExpr(*node.left), alloca);
     }
+    else if (node.type == NODE_ARRAY_ASSIGN) {
+        if (node.left && node.right) {
+            int idx = std::stoi(node.left->value);
+            std::string name = node.varName + "_" + std::to_string(idx);
+            llvm::AllocaInst* alloca = vars[name];
+            if (alloca) {
+                llvm::Value* val = genExpr(*node.right);
+                builder.CreateStore(val, alloca);
+            }
+        }
+    }
     else if (node.type == NODE_DEREF_ASSIGN) {
         llvm::AllocaInst* alloca = vars[node.varName];
         if (alloca) {

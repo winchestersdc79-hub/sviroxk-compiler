@@ -1,12 +1,3 @@
-svi bue lor x = true;
-svi bue lor y = false;
-eles (x) {
-    slov("x это true");
-} sele {
-    slov("x это false");
-}
-eles (y) {
-    slov("y это true");
-} sele {
-    slov("y это false");
-}
+svi rox[] lor arr = [1, 2, 3];
+arr[0] = 10;
+slov(arr[0]);

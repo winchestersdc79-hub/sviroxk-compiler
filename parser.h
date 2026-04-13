@@ -25,6 +25,7 @@ enum NodeType {
     NODE_ADDR,
     NODE_DEREF,
     NODE_DEREF_ASSIGN,
+    NODE_ARRAY_ASSIGN,
     NODE_FILE_OPEN,
     NODE_INPUT,
     NODE_STRLEN,
@@ -43,6 +44,7 @@ struct Node {
     std::string op;
     Node* left = nullptr;
     Node* right = nullptr;
+    Node* extra = nullptr;
     std::vector<Node> children;
     std::vector<Node> elseChildren;
     std::vector<Node> args;

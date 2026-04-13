@@ -317,6 +317,18 @@ Node parseOne() {
         expect(SEMICOLON);
         return node;
     }
+    // arr[0] = 10 — присваивание элемента массива
+    if (peek().type == IDENTIFIER && pos+1 < gtokens.size() && gtokens[pos+1].type == LBRACKET) {
+        Node node; node.type = NODE_ARRAY_ASSIGN;
+        node.varName = consume().value;
+        consume(); // [
+        node.left = new Node(parseExpr());
+        expect(RBRACKET);
+        expect(EQUALS);
+        node.right = new Node(parseExpr());
+        expect(SEMICOLON);
+        return node;
+    }
     // присваивание
     if (peek().type == IDENTIFIER && gtokens[pos+1].type == EQUALS) {
         Node node; node.type = NODE_ASSIGN;
