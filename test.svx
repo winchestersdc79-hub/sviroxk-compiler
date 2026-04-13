@@ -1,6 +1,2 @@
-svi dor lor x = 3.14;
-svi dor lor y = 2.0;
-svi dor lor z = x * y;
-slov(x);
-slov(y);
-slov(z);
+svi chr lor c = 'A';
+slov(c);

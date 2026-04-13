@@ -43,6 +43,7 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "min")  tokens.push_back({MIN,  word});
             else if (word == "vd")  tokens.push_back({VD,  word});
             else if (word == "ar")  tokens.push_back({AR,  word});
+            else if (word == "chr") tokens.push_back({CHR, word});
             else tokens.push_back({IDENTIFIER, word});
             continue;
         }
@@ -55,6 +56,13 @@ std::vector<Token> tokenize(const std::string& code) {
             continue;
         }
 
+        if (code[i] == '\'') {
+            i++; // пропускаем открывающую кавычку
+            int charVal = (unsigned char)code[i++];
+            i++; // пропускаем закрывающую кавычку
+            tokens.push_back({NUMBER, std::to_string(charVal)});
+            continue;
+        }
         if (code[i] == '"') {
             std::string str;
             i++;

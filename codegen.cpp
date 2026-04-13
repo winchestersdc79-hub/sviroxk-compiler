@@ -24,6 +24,8 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
                 return builder.CreateLoad(builder.getPtrTy(), alloca);
             if (ty->isDoubleTy())
                 return builder.CreateLoad(builder.getDoubleTy(), alloca);
+            if (ty->isIntegerTy(8))
+                return builder.CreateLoad(builder.getInt8Ty(), alloca);
             return builder.CreateLoad(builder.getInt32Ty(), alloca);
         }
         return builder.getInt32(0);
@@ -187,6 +189,9 @@ void CodeGen::genNode(const Node& node) {
             if (val->getType()->isDoubleTy()) {
                 llvm::Value* fmt = getStringPtr("%f\n");
                 builder.CreateCall(printfFunc, {fmt, val});
+            } else if (val->getType()->isIntegerTy(8)) {
+                llvm::Value* fmt = getStringPtr("%c\n");
+                builder.CreateCall(printfFunc, {fmt, val});
             } else {
                 llvm::Value* fmt = getStringPtr("%d\n");
                 builder.CreateCall(printfFunc, {fmt, val});
@@ -202,6 +207,8 @@ void CodeGen::genNode(const Node& node) {
             ty = builder.getPtrTy();
         else if (node.varType == "dor" || node.varType == "udor")
             ty = builder.getDoubleTy();
+        else if (node.varType == "chr")
+            ty = builder.getInt8Ty();
         else
             ty = builder.getInt32Ty();
         llvm::AllocaInst* alloca =
