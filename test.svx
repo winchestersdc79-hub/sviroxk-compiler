@@ -1,3 +1,6 @@
-imp "math.svx";
-svi rox lor result = cop square(5);
-slov(result);
+svi rox lor x = 5;
+svi dor lor y = (dor)x;
+slov(y);
+svi dor lor pi = 3.14;
+svi rox lor z = (rox)pi;
+slov(z);

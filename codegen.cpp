@@ -80,6 +80,32 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             builder.getInt64(4)); // 4 байта на int
         return builder.CreateCall(mallocF, {bytes});
     }
+    if (node.type == NODE_CAST) {
+        llvm::Value* val = genExpr(*node.left);
+        if (node.varType == "dor") {
+            if (val->getType()->isIntegerTy())
+                return builder.CreateSIToFP(val, builder.getDoubleTy());
+            return val;
+        }
+        if (node.varType == "rox") {
+            if (val->getType()->isDoubleTy())
+                return builder.CreateFPToSI(val, builder.getInt32Ty());
+            return val;
+        }
+        if (node.varType == "rox64") {
+            if (val->getType()->isDoubleTy())
+                return builder.CreateFPToSI(val, builder.getInt64Ty());
+            if (val->getType()->isIntegerTy(32))
+                return builder.CreateSExt(val, builder.getInt64Ty());
+            return val;
+        }
+        if (node.varType == "chr") {
+            if (val->getType()->isIntegerTy(32))
+                return builder.CreateTrunc(val, builder.getInt8Ty());
+            return val;
+        }
+        return val;
+    }
     if (node.type == NODE_FILE_OPEN) {
         llvm::FunctionType* fopenType =
             llvm::FunctionType::get(builder.getPtrTy(),

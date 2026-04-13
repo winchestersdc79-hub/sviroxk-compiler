@@ -21,6 +21,18 @@ std::vector<Node> parseBlock();
 
 Node parseExpr() {
     Node left;
+    // (dor)x — приведение типов
+    if (peek().type == LPAREN && pos+1 < (int)gtokens.size() &&
+        (gtokens[pos+1].type == ROX || gtokens[pos+1].type == DOR ||
+         gtokens[pos+1].type == CHR || gtokens[pos+1].type == ROX64)) {
+        consume(); // (
+        std::string castType = consume().value;
+        consume(); // )
+        left.type = NODE_CAST;
+        left.varType = castType;
+        left.left = new Node(parseExpr());
+        return left;
+    }
     if (peek().type == TRUE_T) {
         consume();
         left.type = NODE_NUMBER; left.value = "1";
