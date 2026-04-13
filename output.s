@@ -1,36 +1,53 @@
 	.file	"sviroxk"
+	.section	.rodata.cst8,"aM",@progbits,8
+	.p2align	3, 0x0                          // -- Begin function main
+.LCPI0_0:
+	.xword	0x400d99999999999a              // double 3.7000000000000002
+.LCPI0_1:
+	.xword	0x400999999999999a              // double 3.2000000000000002
 	.text
-	.globl	main                            // -- Begin function main
+	.globl	main
 	.p2align	2
 	.type	main,@function
 main:                                   // @main
 	.cfi_startproc
 // %bb.0:                               // %entry
-	sub	sp, sp, #32
-	.cfi_def_cfa_offset 32
+	sub	sp, sp, #48
+	str	x30, [sp, #32]                  // 8-byte Folded Spill
+	.cfi_def_cfa_offset 48
 	.cfi_offset w30, -16
-	fmov	d0, #5.00000000
-	mov	w8, #5                          // =0x5
-	mov	x9, #4617315517961601024        // =0x4014000000000000
+	adrp	x8, .LCPI0_0
+	ldr	d0, [x8, :lo12:.LCPI0_0]
+	bl	floor
+	adrp	x8, .LCPI0_1
+	str	d0, [sp, #40]
+	ldr	d0, [x8, :lo12:.LCPI0_1]
+	bl	ceil
+	str	d0, [sp, #24]
+	fmov	d0, #3.50000000
+	bl	round
+	str	d0, [sp, #16]
+	bl	rand
+	ldr	d0, [sp, #40]
+	str	w0, [sp, #12]
 	adrp	x0, .L__unnamed_1
 	add	x0, x0, :lo12:.L__unnamed_1
-	str	w8, [sp, #28]
-	stp	x9, x30, [sp, #8]               // 8-byte Folded Spill
 	bl	printf
-	mov	x8, #34079                      // =0x851f
-	mov	w9, #3                          // =0x3
+	ldr	d0, [sp, #24]
 	adrp	x0, .L__unnamed_2
 	add	x0, x0, :lo12:.L__unnamed_2
-	movk	x8, #20971, lsl #16
-	mov	w1, #3                          // =0x3
-	movk	x8, #7864, lsl #32
-	str	w9, [sp, #24]
-	movk	x8, #16393, lsl #48
-	str	x8, [sp]
 	bl	printf
-	ldr	x30, [sp, #16]                  // 8-byte Folded Reload
+	ldr	d0, [sp, #16]
+	adrp	x0, .L__unnamed_3
+	add	x0, x0, :lo12:.L__unnamed_3
+	bl	printf
+	ldr	w1, [sp, #12]
+	adrp	x0, .L__unnamed_4
+	add	x0, x0, :lo12:.L__unnamed_4
+	bl	printf
+	ldr	x30, [sp, #32]                  // 8-byte Folded Reload
 	mov	w0, wzr
-	add	sp, sp, #32
+	add	sp, sp, #48
 	ret
 .Lfunc_end0:
 	.size	main, .Lfunc_end0-main
@@ -44,7 +61,17 @@ main:                                   // @main
 
 	.type	.L__unnamed_2,@object           // @1
 .L__unnamed_2:
-	.asciz	"%d\n"
+	.asciz	"%f\n"
 	.size	.L__unnamed_2, 4
+
+	.type	.L__unnamed_3,@object           // @2
+.L__unnamed_3:
+	.asciz	"%f\n"
+	.size	.L__unnamed_3, 4
+
+	.type	.L__unnamed_4,@object           // @3
+.L__unnamed_4:
+	.asciz	"%d\n"
+	.size	.L__unnamed_4, 4
 
 	.section	".note.GNU-stack","",@progbits

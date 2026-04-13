@@ -209,6 +209,28 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             llvm::Value* b = genExpr(node.args[1]);
             return builder.CreateSelect(builder.CreateICmpSLT(a, b), a, b);
         }
+        if (name == "flo" || name == "cel" || name == "ron") {
+            llvm::FunctionType* ft = llvm::FunctionType::get(
+                builder.getDoubleTy(), {builder.getDoubleTy()}, false);
+            llvm::Function* f = module.getFunction(
+                name == "flo" ? "floor" : name == "cel" ? "ceil" : "round");
+            std::string cname = name == "flo" ? "floor" : name == "cel" ? "ceil" : "round";
+            f = module.getFunction(cname);
+            if (!f) f = llvm::Function::Create(ft,
+                llvm::Function::ExternalLinkage, cname, module);
+            llvm::Value* arg = genExpr(node.args[0]);
+            if (arg->getType()->isIntegerTy())
+                arg = builder.CreateSIToFP(arg, builder.getDoubleTy());
+            return builder.CreateCall(f, {arg});
+        }
+        if (name == "ran") {
+            llvm::FunctionType* ft = llvm::FunctionType::get(
+                builder.getInt32Ty(), {}, false);
+            llvm::Function* f = module.getFunction("rand");
+            if (!f) f = llvm::Function::Create(ft,
+                llvm::Function::ExternalLinkage, "rand", module);
+            return builder.CreateCall(f, {});
+        }
         if (name == "ar") {
             llvm::FunctionType* strlenType =
                 llvm::FunctionType::get(builder.getInt32Ty(),

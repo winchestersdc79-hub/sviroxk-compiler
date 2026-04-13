@@ -53,7 +53,9 @@ Node parseExpr() {
     // математика
     if (peek().type == SQRT || peek().type == ABS ||
         peek().type == POW  || peek().type == MAX ||
-        peek().type == MIN  || peek().type == AR) {
+        peek().type == MIN  || peek().type == AR  ||
+        peek().type == FLO  || peek().type == CEL ||
+        peek().type == RON  || peek().type == RAN) {
         Node left;
         left.type = NODE_FUNC_CALL;
         left.varName = consume().value;
@@ -278,7 +280,9 @@ Node parseOne() {
     // математика
     if (peek().type == SQRT || peek().type == ABS ||
         peek().type == POW  || peek().type == MAX ||
-        peek().type == MIN  || peek().type == AR) {
+        peek().type == MIN  || peek().type == AR  ||
+        peek().type == FLO  || peek().type == CEL ||
+        peek().type == RON  || peek().type == RAN) {
         Node left;
     if (peek().type == MINUS) {
         consume();

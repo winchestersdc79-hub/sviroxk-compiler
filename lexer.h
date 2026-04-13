@@ -28,7 +28,7 @@ enum TokenType {
     PLUS, MINUS, STAR, SLASH, AMP,
     PTR,
     ATK, ZAP, PRO, ZAK, FILE_T,
-    SQRT, ABS, POW, MAX, MIN,
+    SQRT, ABS, POW, MAX, MIN, FLO, CEL, RON, RAN,
     CHR, ROX64, TRUE_T, FALSE_T, NW, DEL, BRK, CONT, IMP,
     AR,
     VD,

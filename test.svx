@@ -1,6 +1,8 @@
-svi rox lor x = 5;
-svi dor lor y = (dor)x;
-slov(y);
-svi dor lor pi = 3.14;
-svi rox lor z = (rox)pi;
-slov(z);
+svi dor lor a = flo(3.7);
+svi dor lor b = cel(3.2);
+svi dor lor c = ron(3.5);
+svi rox lor d = ran();
+slov(a);
+slov(b);
+slov(c);
+slov(d);
