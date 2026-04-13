@@ -55,7 +55,9 @@ Node parseExpr() {
         peek().type == POW  || peek().type == MAX ||
         peek().type == MIN  || peek().type == AR  ||
         peek().type == FLO  || peek().type == CEL ||
-        peek().type == RON  || peek().type == RAN) {
+        peek().type == RON  || peek().type == RAN ||
+        peek().type == SER  || peek().type == REP ||
+        peek().type == VV_S || peek().type == STR) {
         Node left;
         left.type = NODE_FUNC_CALL;
         left.varName = consume().value;
@@ -282,7 +284,9 @@ Node parseOne() {
         peek().type == POW  || peek().type == MAX ||
         peek().type == MIN  || peek().type == AR  ||
         peek().type == FLO  || peek().type == CEL ||
-        peek().type == RON  || peek().type == RAN) {
+        peek().type == RON  || peek().type == RAN ||
+        peek().type == SER  || peek().type == REP ||
+        peek().type == VV_S || peek().type == STR) {
         Node left;
     if (peek().type == MINUS) {
         consume();
@@ -321,6 +325,17 @@ Node parseOne() {
         return left;
     }
     // atk — открыть файл (используется в parseExpr через svi)
+    // vv_s — ввод строки
+    if (peek().type == VV_S) {
+        consume();
+        Node node; node.type = NODE_INPUT;
+        node.varType = "cos"; // строка
+        expect(LPAREN);
+        node.value = consume().value;
+        expect(RPAREN);
+        expect(SEMICOLON);
+        return node;
+    }
     // brk — выход из цикла
     if (peek().type == BRK) {
         consume();

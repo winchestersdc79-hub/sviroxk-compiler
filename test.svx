@@ -1,8 +1,10 @@
-svi dor lor a = flo(3.7);
-svi dor lor b = cel(3.2);
-svi dor lor c = ron(3.5);
-svi rox lor d = ran();
-slov(a);
-slov(b);
-slov(c);
-slov(d);
+svi cos lor s1 = "привет";
+svi cos lor s2 = "привет";
+svi cos lor s3 = "мир";
+svi rox lor eq1 = ser(s1, s2);
+svi rox lor eq2 = ser(s1, s3);
+slov(eq1);
+slov(eq2);
+svi rox lor n = 42;
+svi cos lor ns = str(n);
+slov(ns);

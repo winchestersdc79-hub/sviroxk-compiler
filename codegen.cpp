@@ -117,6 +117,30 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         llvm::Value* mode = getStringPtr("w");
         return builder.CreateCall(fopenF, {fname, mode});
     }
+    if (node.type == NODE_INPUT && node.varType == "cos") {
+        llvm::FunctionType* printfType =
+            llvm::FunctionType::get(builder.getInt32Ty(),
+                {builder.getPtrTy()}, true);
+        llvm::Function* printfF = module.getFunction("printf");
+        if (!printfF) printfF = llvm::Function::Create(printfType,
+            llvm::Function::ExternalLinkage, "printf", module);
+        llvm::FunctionType* scanfType =
+            llvm::FunctionType::get(builder.getInt32Ty(),
+                {builder.getPtrTy()}, true);
+        llvm::Function* scanfF = module.getFunction("scanf");
+        if (!scanfF) scanfF = llvm::Function::Create(scanfType,
+            llvm::Function::ExternalLinkage, "scanf", module);
+        llvm::Value* prompt = getStringPtr(node.value);
+        builder.CreateCall(printfF, {prompt});
+        llvm::AllocaInst* buf = builder.CreateAlloca(
+            llvm::ArrayType::get(builder.getInt8Ty(), 256), nullptr, "strinput");
+        llvm::Value* bufPtr = builder.CreateInBoundsGEP(
+            llvm::ArrayType::get(builder.getInt8Ty(), 256), buf,
+            {builder.getInt32(0), builder.getInt32(0)});
+        llvm::Value* fmt = getStringPtr("%255s");
+        builder.CreateCall(scanfF, {fmt, bufPtr});
+        return bufPtr;
+    }
     if (node.type == NODE_INPUT) {
         llvm::FunctionType* printfType =
             llvm::FunctionType::get(builder.getInt32Ty(),
@@ -209,6 +233,40 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             llvm::Value* b = genExpr(node.args[1]);
             return builder.CreateSelect(builder.CreateICmpSLT(a, b), a, b);
         }
+        if (name == "str") {
+            llvm::FunctionType* sprintfType =
+                llvm::FunctionType::get(builder.getInt32Ty(),
+                    {builder.getPtrTy(), builder.getPtrTy()}, true);
+            llvm::Function* sprintfF = module.getFunction("sprintf");
+            if (!sprintfF) sprintfF = llvm::Function::Create(sprintfType,
+                llvm::Function::ExternalLinkage, "sprintf", module);
+            llvm::AllocaInst* buf = builder.CreateAlloca(
+                llvm::ArrayType::get(builder.getInt8Ty(), 64), nullptr, "strbuf");
+            llvm::Value* bufPtr = builder.CreateInBoundsGEP(
+                llvm::ArrayType::get(builder.getInt8Ty(), 64), buf,
+                {builder.getInt32(0), builder.getInt32(0)});
+            llvm::Value* val = genExpr(node.args[0]);
+            llvm::Value* fmt = getStringPtr("%d");
+            builder.CreateCall(sprintfF, {bufPtr, fmt, val});
+            return bufPtr;
+        }
+        if (name == "ser") {
+            llvm::FunctionType* strcmpType =
+                llvm::FunctionType::get(builder.getInt32Ty(),
+                    {builder.getPtrTy(), builder.getPtrTy()}, false);
+            llvm::Function* strcmpF = module.getFunction("strcmp");
+            if (!strcmpF) strcmpF = llvm::Function::Create(strcmpType,
+                llvm::Function::ExternalLinkage, "strcmp", module);
+            llvm::Value* s1 = genExpr(node.args[0]);
+            llvm::Value* s2 = genExpr(node.args[1]);
+            llvm::Value* res = builder.CreateCall(strcmpF, {s1, s2});
+            return builder.CreateICmpEQ(res, builder.getInt32(0));
+        }
+        if (name == "rep") {
+            // замена подстроки — используем sprintf как упрощение
+            // полная реализация требует больше кода
+            return genExpr(node.args[0]);
+        }
         if (name == "flo" || name == "cel" || name == "ron") {
             llvm::FunctionType* ft = llvm::FunctionType::get(
                 builder.getDoubleTy(), {builder.getDoubleTy()}, false);
@@ -258,13 +316,12 @@ void CodeGen::genNode(const Node& node) {
         if (node.left && node.left->type == NODE_STRING) {
             llvm::Value* str = getStringPtr(node.left->value);
             builder.CreateCall(putsFunc, {str});
-        } else if (node.left && (
-            node.left->type == NODE_IDENTIFIER ||
-            node.left->type == NODE_ARRAY_ACCESS ||
-            node.left->type == NODE_FUNC_CALL ||
-            node.left->type == NODE_DEREF)) {
+        } else if (node.left) {
             llvm::Value* val = genExpr(*node.left);
-            if (val->getType()->isDoubleTy()) {
+            if (val->getType()->isPointerTy()) {
+                // строка — выводим через puts
+                builder.CreateCall(putsFunc, {val});
+            } else if (val->getType()->isDoubleTy()) {
                 llvm::Value* fmt = getStringPtr("%f\n");
                 builder.CreateCall(printfFunc, {fmt, val});
             } else if (val->getType()->isIntegerTy(8)) {

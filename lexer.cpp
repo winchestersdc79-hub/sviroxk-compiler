@@ -52,6 +52,10 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "imp")  tokens.push_back({IMP,  word});
             else if (word == "cont") tokens.push_back({CONT, word});
             else if (word == "ar")  tokens.push_back({AR,  word});
+            else if (word == "ser")  tokens.push_back({SER,  word});
+            else if (word == "rep")  tokens.push_back({REP,  word});
+            else if (word == "vv_s") tokens.push_back({VV_S, word});
+            else if (word == "str")  tokens.push_back({STR,  word});
             else if (word == "chr") tokens.push_back({CHR, word});
             else if (word == "rox64") tokens.push_back({ROX64, word});
             else if (word == "true")  tokens.push_back({TRUE_T, word});
