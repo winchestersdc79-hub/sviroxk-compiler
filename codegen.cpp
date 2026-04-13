@@ -9,15 +9,21 @@ llvm::Value* CodeGen::getStringPtr(const std::string& str) {
 }
 
 llvm::Value* CodeGen::genExpr(const Node& node) {
-    if (node.type == NODE_NUMBER)
+    if (node.type == NODE_NUMBER) {
+        if (node.value.find('.') != std::string::npos)
+            return llvm::ConstantFP::get(builder.getDoubleTy(), std::stod(node.value));
         return builder.getInt32(std::stoi(node.value));
+    }
     if (node.type == NODE_STRING)
         return getStringPtr(node.value);
     if (node.type == NODE_IDENTIFIER) {
         llvm::AllocaInst* alloca = vars[node.value];
         if (alloca) {
-            if (alloca->getAllocatedType()->isPointerTy())
+            llvm::Type* ty = alloca->getAllocatedType();
+            if (ty->isPointerTy())
                 return builder.CreateLoad(builder.getPtrTy(), alloca);
+            if (ty->isDoubleTy())
+                return builder.CreateLoad(builder.getDoubleTy(), alloca);
             return builder.CreateLoad(builder.getInt32Ty(), alloca);
         }
         return builder.getInt32(0);
@@ -77,6 +83,21 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
     if (node.type == NODE_BINOP) {
         llvm::Value* L = genExpr(*node.left);
         llvm::Value* R = genExpr(*node.right);
+        bool isFloat = L->getType()->isDoubleTy() || R->getType()->isDoubleTy();
+        if (isFloat) {
+            if (L->getType()->isIntegerTy())
+                L = builder.CreateSIToFP(L, builder.getDoubleTy());
+            if (R->getType()->isIntegerTy())
+                R = builder.CreateSIToFP(R, builder.getDoubleTy());
+            if (node.op == "+") return builder.CreateFAdd(L, R);
+            if (node.op == "-") return builder.CreateFSub(L, R);
+            if (node.op == "*") return builder.CreateFMul(L, R);
+            if (node.op == "/") return builder.CreateFDiv(L, R);
+            if (node.op == ">") return builder.CreateFCmpOGT(L, R);
+            if (node.op == "<") return builder.CreateFCmpOLT(L, R);
+            if (node.op == "==") return builder.CreateFCmpOEQ(L, R);
+            if (node.op == "!=") return builder.CreateFCmpONE(L, R);
+        }
         if (node.op == "+") return builder.CreateAdd(L, R);
         if (node.op == "-") return builder.CreateSub(L, R);
         if (node.op == "*") return builder.CreateMul(L, R);
@@ -162,23 +183,34 @@ void CodeGen::genNode(const Node& node) {
             node.left->type == NODE_ARRAY_ACCESS ||
             node.left->type == NODE_FUNC_CALL ||
             node.left->type == NODE_DEREF)) {
-            llvm::Value* fmt = getStringPtr("%d\n");
             llvm::Value* val = genExpr(*node.left);
-            builder.CreateCall(printfFunc, {fmt, val});
+            if (val->getType()->isDoubleTy()) {
+                llvm::Value* fmt = getStringPtr("%f\n");
+                builder.CreateCall(printfFunc, {fmt, val});
+            } else {
+                llvm::Value* fmt = getStringPtr("%d\n");
+                builder.CreateCall(printfFunc, {fmt, val});
+            }
         } else {
             llvm::Value* str = getStringPtr(node.value);
             builder.CreateCall(putsFunc, {str});
         }
     }
     else if (node.type == NODE_VAR_DECL) {
-        llvm::Type* ty = (node.varType == "ptr" ||
-                          node.varType == "file" ||
-                          node.varType == "cos") ?
-            (llvm::Type*)builder.getPtrTy() :
-            (llvm::Type*)builder.getInt32Ty();
+        llvm::Type* ty;
+        if (node.varType == "ptr" || node.varType == "file" || node.varType == "cos")
+            ty = builder.getPtrTy();
+        else if (node.varType == "dor" || node.varType == "udor")
+            ty = builder.getDoubleTy();
+        else
+            ty = builder.getInt32Ty();
         llvm::AllocaInst* alloca =
             builder.CreateAlloca(ty, nullptr, node.varName);
         llvm::Value* val = genExpr(*node.left);
+        if (node.varType == "dor" || node.varType == "udor") {
+            if (val->getType()->isIntegerTy())
+                val = builder.CreateSIToFP(val, builder.getDoubleTy());
+        }
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
     }
