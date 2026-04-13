@@ -21,6 +21,16 @@ std::vector<Node> parseBlock();
 
 Node parseExpr() {
     Node left;
+    if (peek().type == TRUE_T) {
+        consume();
+        left.type = NODE_NUMBER; left.value = "1";
+        return left;
+    }
+    if (peek().type == FALSE_T) {
+        consume();
+        left.type = NODE_NUMBER; left.value = "0";
+        return left;
+    }
     if (peek().type == MINUS) {
         consume();
         Token num = consume();
@@ -129,14 +139,19 @@ Node parseExpr() {
 
 Node parseCond() {
     Node left = parseExpr();
-    Token op = consume();
-    Node right = parseExpr();
-    Node* c = new Node();
-    c->type = NODE_BINOP;
-    c->op = op.value;
-    c->left = new Node(left);
-    c->right = new Node(right);
-    return *c;
+    Token next = peek();
+    if (next.value == ">" || next.value == "<" ||
+        next.value == "==" || next.value == "!=") {
+        Token op = consume();
+        Node right = parseExpr();
+        Node* c = new Node();
+        c->type = NODE_BINOP;
+        c->op = op.value;
+        c->left = new Node(left);
+        c->right = new Node(right);
+        return *c;
+    }
+    return left;
 }
 
 Node parseOne();

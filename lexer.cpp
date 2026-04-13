@@ -45,6 +45,8 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "ar")  tokens.push_back({AR,  word});
             else if (word == "chr") tokens.push_back({CHR, word});
             else if (word == "rox64") tokens.push_back({ROX64, word});
+            else if (word == "true")  tokens.push_back({TRUE_T, word});
+            else if (word == "false") tokens.push_back({FALSE_T, word});
             else tokens.push_back({IDENTIFIER, word});
             continue;
         }

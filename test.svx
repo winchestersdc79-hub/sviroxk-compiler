@@ -1,2 +1,12 @@
-svi rox64 lor x = 9999999999;
-slov(x);
+svi bue lor x = true;
+svi bue lor y = false;
+eles (x) {
+    slov("x это true");
+} sele {
+    slov("x это false");
+}
+eles (y) {
+    slov("y это true");
+} sele {
+    slov("y это false");
+}
