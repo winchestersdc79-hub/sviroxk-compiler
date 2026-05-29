@@ -78,6 +78,7 @@ zak(f);
 ## Сборка компилятора
 
 ```bash
+chmod +x build.sh run.sh   # один раз, если Permission denied
 ./build.sh
 # или:
 clang++ main.cpp lexer.cpp parser.cpp codegen.cpp \
@@ -89,6 +90,8 @@ clang++ main.cpp lexer.cpp parser.cpp codegen.cpp \
 ### Запуск программы
 
 ```bash
+./run.sh hello.svx         # сборка + запуск
+# или вручную:
 ./sviroxk program.svx > output.ll
 llc output.ll -o output.s
 clang output.s -o program -lm
