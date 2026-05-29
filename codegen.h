@@ -18,6 +18,7 @@ public:
     std::map<std::string, unsigned> arrayLengths;
     std::map<std::string, llvm::Function*> funcs;
     std::map<std::string, std::vector<std::string>> funcParamTypes;
+    std::map<std::string, std::string> funcReturnTypes;
     struct StructField {
         std::string type;
         std::string name;

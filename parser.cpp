@@ -19,6 +19,11 @@ Token expect(TokenType type) {
     return t;
 }
 
+static bool isTypeToken(TokenType t) {
+    return t == ROX || t == DOR || t == COS || t == BUE || t == PTR ||
+           t == FILE_T || t == CHR || t == ROX64;
+}
+
 Node parseExpr();
 Node parsePrimary();
 Node parseUnary();
@@ -257,11 +262,32 @@ Node parseOne() {
             std::string structName = consume().value;
             expect(LOR);
             std::string varName = consume().value;
-            expect(SEMICOLON);
             Node node;
             node.type = NODE_STRUCT_INSTANCE;
             node.varType = structName;
             node.varName = varName;
+            if (peek().type == EQUALS && pos + 1 < (int)gtokens.size() &&
+                gtokens[pos + 1].type == LBRACE) {
+                consume();
+                expect(LBRACE);
+                while (peek().type != RBRACE && peek().type != END) {
+                    Node init;
+                    if (peek().type == IDENTIFIER &&
+                        pos + 1 < (int)gtokens.size() &&
+                        gtokens[pos + 1].type == EQUALS) {
+                        init.varName = consume().value;
+                        consume();
+                        init.left = new Node(parseExpr());
+                    } else {
+                        init.left = new Node(parseExpr());
+                    }
+                    node.children.push_back(init);
+                    if (peek().type == COMMA || peek().type == SEMICOLON)
+                        consume();
+                }
+                expect(RBRACE);
+            }
+            expect(SEMICOLON);
             return node;
         }
         std::string varType = consume().value;
@@ -309,7 +335,14 @@ Node parseOne() {
     // fucn
     if (peek().type == FUCN) {
         Node node; node.type = NODE_FUNC_DEF;
+        node.varType = "rox";
         consume();
+        if (isTypeToken(peek().type) && pos + 1 < (int)gtokens.size() &&
+            gtokens[pos + 1].type == IDENTIFIER &&
+            pos + 2 < (int)gtokens.size() &&
+            gtokens[pos + 2].type == LPAREN) {
+            node.varType = consume().value;
+        }
         node.varName = consume().value;
         expect(LPAREN);
         while (peek().type != RPAREN && peek().type != END) {

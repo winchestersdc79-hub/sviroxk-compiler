@@ -414,7 +414,9 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
                 argVals.push_back(v);
             }
             llvm::Value* ret = builder.CreateCall(fn, argVals);
-            return castTo(ret, builder.getInt32Ty());
+            std::string rt = funcReturnTypes.count(name)
+                ? funcReturnTypes[name] : "rox";
+            return castTo(ret, svType(rt));
         }
         return builder.getInt32(0);
     }
@@ -504,7 +506,10 @@ void CodeGen::genNode(const Node& node) {
         }
     }
     else if (node.type == NODE_RETURN) {
-        builder.CreateRet(genExpr(*node.left));
+        llvm::Value* v = genExpr(*node.left);
+        llvm::Function* cur = builder.GetInsertBlock()->getParent();
+        llvm::Type* retTy = cur->getReturnType();
+        builder.CreateRet(castTo(v, retTy));
     }
     else if (node.type == NODE_BREAK) {
         if (breakBlock) builder.CreateBr(breakBlock);
@@ -542,12 +547,26 @@ void CodeGen::genNode(const Node& node) {
             std::cerr << "Неизвестная структура: " << node.varType << std::endl;
             exit(1);
         }
-        for (const StructField& f : structDefs[node.varType]) {
+        const auto& fields = structDefs[node.varType];
+        std::map<std::string, const Node*> named;
+        std::vector<const Node*> positional;
+        for (const Node& c : node.children) {
+            if (!c.varName.empty()) named[c.varName] = &c;
+            else if (c.left) positional.push_back(&c);
+        }
+        size_t pi = 0;
+        for (const StructField& f : fields) {
             std::string full = node.varName + "_" + f.name;
             llvm::Type* ty = svType(f.type);
             llvm::AllocaInst* alloca =
                 builder.CreateAlloca(ty, nullptr, full);
-            llvm::Value* val = genExpr(f.defaultVal);
+            llvm::Value* val;
+            if (named.count(f.name))
+                val = genExpr(*named.at(f.name)->left);
+            else if (pi < positional.size())
+                val = genExpr(*positional[pi++]->left);
+            else
+                val = genExpr(f.defaultVal);
             val = castTo(val, ty);
             builder.CreateStore(val, alloca);
             vars[full] = alloca;
@@ -563,8 +582,10 @@ void CodeGen::genNode(const Node& node) {
         for (const std::string& p : node.params)
             ptypes.push_back(p.substr(0, p.find(':')));
         funcParamTypes[node.varName] = ptypes;
+        funcReturnTypes[node.varName] = node.varType.empty() ? "rox" : node.varType;
+        llvm::Type* retTy = svType(funcReturnTypes[node.varName]);
         llvm::FunctionType* ft =
-            llvm::FunctionType::get(builder.getInt32Ty(), paramTypes, false);
+            llvm::FunctionType::get(retTy, paramTypes, false);
         llvm::Function* func =
             llvm::Function::Create(ft,
                 llvm::Function::ExternalLinkage, node.varName, module);
@@ -593,7 +614,14 @@ void CodeGen::genNode(const Node& node) {
             genNode(n);
             if (n.type == NODE_RETURN) { hasRet = true; break; }
         }
-        if (!hasRet) builder.CreateRet(builder.getInt32(0));
+        if (!hasRet) {
+            if (retTy->isDoubleTy())
+                builder.CreateRet(llvm::ConstantFP::get(builder.getDoubleTy(), 0.0));
+            else if (retTy->isPointerTy())
+                builder.CreateRet(llvm::ConstantPointerNull::get(builder.getPtrTy()));
+            else
+                builder.CreateRet(llvm::ConstantInt::get(retTy, 0));
+        }
         builder.SetInsertPoint(savedBlock);
         vars = savedVars;
         arrays = savedArrays;

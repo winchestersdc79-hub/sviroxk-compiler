@@ -1,0 +1,7 @@
+fucn dor half(rox x) {
+    rev x / 2;
+}
+
+svi dor lor y = 3.14;
+svi dor lor h = cop half(10);
+slov(h);

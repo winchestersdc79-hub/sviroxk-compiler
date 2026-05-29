@@ -1,0 +1,8 @@
+tip Player {
+    rox health = 100;
+    rox speed = 5;
+}
+
+svi tip Player lor hero = { health = 75; speed = 9; };
+slov(hero.health);
+slov(hero.speed);

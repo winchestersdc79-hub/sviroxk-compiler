@@ -55,6 +55,10 @@ tip Player {
 svi tip Player lor hero;
 hero.health = 80;
 slov(hero.health);
+svi tip Player lor bot = { health = 50; speed = 3; };
+fucn dor avg(rox a, rox b) {
+    rev (a + b) / 2;
+}
 ### Указатели
 svi rox lor x = 5;
 svi ptr lor p = &x;
