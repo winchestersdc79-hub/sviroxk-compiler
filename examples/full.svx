@@ -1,0 +1,22 @@
+svi rox lor x = 5;
+svi dor lor y = 3.14;
+svi bue lor ok = true;
+svi rox[] lor arr = [10, 20, 30];
+svi rox lor i = 0;
+
+eles (x > 3) {
+    slov("x больше 3");
+} sele {
+    slov("иначе");
+}
+
+cert ceh (2) {
+    slov("цикл");
+}
+
+fucn add(rox a, rox b) {
+    rev a + b;
+}
+
+svi rox lor sum = cop add(5, 3);
+slov(sum);

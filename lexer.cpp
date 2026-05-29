@@ -5,128 +5,165 @@
 std::vector<Token> tokenize(const std::string& code) {
     std::vector<Token> tokens;
     int i = 0;
+    int line = 1;
+    int column = 1;
 
-    while (i < code.size()) {
-        if (isspace(code[i])) { i++; continue; }
+    auto add = [&](TokenType type, const std::string& value, int tokLine, int tokCol) {
+        tokens.push_back({type, value, tokLine, tokCol});
+    };
+
+    while (i < (int)code.size()) {
+        if (code[i] == '\n') {
+            line++;
+            column = 1;
+            i++;
+            continue;
+        }
+        if (isspace(code[i])) {
+            column++;
+            i++;
+            continue;
+        }
+
+        int tokLine = line;
+        int tokCol = column;
 
         if (isalpha(code[i]) || code[i] == '_') {
             std::string word;
-            while (i < code.size() && (isalnum(code[i]) || code[i] == '_' || isdigit(code[i])))
+            while (i < (int)code.size() &&
+                   (isalnum(code[i]) || code[i] == '_' || isdigit(code[i]))) {
                 word += code[i++];
-
-            if      (word == "svi")  tokens.push_back({SVI,  word});
-            else if (word == "lor")  tokens.push_back({LOR,  word});
-            else if (word == "rox")  tokens.push_back({ROX,  word});
-            else if (word == "dor")  tokens.push_back({DOR,  word});
-            else if (word == "cos")  tokens.push_back({COS,  word});
-            else if (word == "bue")  tokens.push_back({BUE,  word});
-            else if (word == "eles") tokens.push_back({ELES, word});
-            else if (word == "sele") tokens.push_back({SELE, word});
-            else if (word == "cert") tokens.push_back({CERT, word});
-            else if (word == "ceh")  tokens.push_back({CEH,  word});
-            else if (word == "usy")  tokens.push_back({USY,  word});
-            else if (word == "fucn") tokens.push_back({FUCN, word});
-            else if (word == "rev")  tokens.push_back({REV,  word});
-            else if (word == "cop")  tokens.push_back({COP,  word});
-            else if (word == "tip")  tokens.push_back({TIP,  word});
-            else if (word == "slov") tokens.push_back({SLOV, word});
-            else if (word == "ptr")  tokens.push_back({PTR,  word});
-            else if (word == "atk")  tokens.push_back({ATK,  word});
-            else if (word == "zap")  tokens.push_back({ZAP,  word});
-            else if (word == "pro")  tokens.push_back({PRO,  word});
-            else if (word == "zak")  tokens.push_back({ZAK,  word});
-            else if (word == "file") tokens.push_back({FILE_T, word});
-            else if (word == "sqrt") tokens.push_back({SQRT, word});
-            else if (word == "abs")  tokens.push_back({ABS,  word});
-            else if (word == "pow")  tokens.push_back({POW,  word});
-            else if (word == "max")  tokens.push_back({MAX,  word});
-            else if (word == "min")  tokens.push_back({MIN,  word});
-            else if (word == "flo")  tokens.push_back({FLO,  word});
-            else if (word == "cel")  tokens.push_back({CEL,  word});
-            else if (word == "ron")  tokens.push_back({RON,  word});
-            else if (word == "ran")  tokens.push_back({RAN,  word});
-            else if (word == "vd")  tokens.push_back({VD,  word});
-            else if (word == "nw")  tokens.push_back({NW,  word});
-            else if (word == "del") tokens.push_back({DEL, word});
-            else if (word == "brk")  tokens.push_back({BRK,  word});
-            else if (word == "imp")  tokens.push_back({IMP,  word});
-            else if (word == "cont") tokens.push_back({CONT, word});
-            else if (word == "ar")  tokens.push_back({AR,  word});
-            else if (word == "ser")  tokens.push_back({SER,  word});
-            else if (word == "rep")  tokens.push_back({REP,  word});
-            else if (word == "vv_s") tokens.push_back({VV_S, word});
-            else if (word == "str")  tokens.push_back({STR,  word});
-            else if (word == "chr") tokens.push_back({CHR, word});
-            else if (word == "rox64") tokens.push_back({ROX64, word});
-            else if (word == "true")  tokens.push_back({TRUE_T, word});
-            else if (word == "false") tokens.push_back({FALSE_T, word});
-            else tokens.push_back({IDENTIFIER, word});
+                column++;
+            }
+            if      (word == "svi")  add(SVI,  word, tokLine, tokCol);
+            else if (word == "lor")  add(LOR,  word, tokLine, tokCol);
+            else if (word == "rox")  add(ROX,  word, tokLine, tokCol);
+            else if (word == "dor")  add(DOR,  word, tokLine, tokCol);
+            else if (word == "cos")  add(COS,  word, tokLine, tokCol);
+            else if (word == "bue")  add(BUE,  word, tokLine, tokCol);
+            else if (word == "eles") add(ELES, word, tokLine, tokCol);
+            else if (word == "sele") add(SELE, word, tokLine, tokCol);
+            else if (word == "cert") add(CERT, word, tokLine, tokCol);
+            else if (word == "ceh")  add(CEH,  word, tokLine, tokCol);
+            else if (word == "usy")  add(USY,  word, tokLine, tokCol);
+            else if (word == "fucn") add(FUCN, word, tokLine, tokCol);
+            else if (word == "rev")  add(REV,  word, tokLine, tokCol);
+            else if (word == "cop")  add(COP,  word, tokLine, tokCol);
+            else if (word == "tip")  add(TIP,  word, tokLine, tokCol);
+            else if (word == "slov") add(SLOV, word, tokLine, tokCol);
+            else if (word == "ptr")  add(PTR,  word, tokLine, tokCol);
+            else if (word == "atk")  add(ATK,  word, tokLine, tokCol);
+            else if (word == "zap")  add(ZAP,  word, tokLine, tokCol);
+            else if (word == "pro")  add(PRO,  word, tokLine, tokCol);
+            else if (word == "zak")  add(ZAK,  word, tokLine, tokCol);
+            else if (word == "file") add(FILE_T, word, tokLine, tokCol);
+            else if (word == "sqrt") add(SQRT, word, tokLine, tokCol);
+            else if (word == "abs")  add(ABS,  word, tokLine, tokCol);
+            else if (word == "pow")  add(POW,  word, tokLine, tokCol);
+            else if (word == "max")  add(MAX,  word, tokLine, tokCol);
+            else if (word == "min")  add(MIN,  word, tokLine, tokCol);
+            else if (word == "flo")  add(FLO,  word, tokLine, tokCol);
+            else if (word == "cel")  add(CEL,  word, tokLine, tokCol);
+            else if (word == "ron")  add(RON,  word, tokLine, tokCol);
+            else if (word == "ran")  add(RAN,  word, tokLine, tokCol);
+            else if (word == "vd")   add(VD,   word, tokLine, tokCol);
+            else if (word == "nw")   add(NW,   word, tokLine, tokCol);
+            else if (word == "del")  add(DEL,  word, tokLine, tokCol);
+            else if (word == "brk")  add(BRK,  word, tokLine, tokCol);
+            else if (word == "imp")  add(IMP,  word, tokLine, tokCol);
+            else if (word == "cont") add(CONT, word, tokLine, tokCol);
+            else if (word == "ar")   add(AR,   word, tokLine, tokCol);
+            else if (word == "ser")  add(SER,  word, tokLine, tokCol);
+            else if (word == "rep")  add(REP,  word, tokLine, tokCol);
+            else if (word == "vv_s") add(VV_S, word, tokLine, tokCol);
+            else if (word == "str")  add(STR,  word, tokLine, tokCol);
+            else if (word == "chr")  add(CHR,  word, tokLine, tokCol);
+            else if (word == "rox64") add(ROX64, word, tokLine, tokCol);
+            else if (word == "true")  add(TRUE_T, word, tokLine, tokCol);
+            else if (word == "false") add(FALSE_T, word, tokLine, tokCol);
+            else add(IDENTIFIER, word, tokLine, tokCol);
             continue;
         }
 
         if (isdigit(code[i])) {
             std::string num;
-            while (i < code.size() && (isdigit(code[i]) || code[i] == '.'))
+            while (i < (int)code.size() && (isdigit(code[i]) || code[i] == '.')) {
                 num += code[i++];
-            tokens.push_back({NUMBER, num});
+                column++;
+            }
+            add(NUMBER, num, tokLine, tokCol);
             continue;
         }
 
         if (code[i] == '\'') {
-            i++; // пропускаем открывающую кавычку
+            i++;
+            column++;
             int charVal = (unsigned char)code[i++];
-            i++; // пропускаем закрывающую кавычку
-            tokens.push_back({NUMBER, std::to_string(charVal)});
+            column++;
+            i++;
+            column++;
+            add(NUMBER, std::to_string(charVal), tokLine, tokCol);
             continue;
         }
         if (code[i] == '"') {
             std::string str;
             i++;
-            while (i < code.size() && code[i] != '"')
+            column++;
+            while (i < (int)code.size() && code[i] != '"') {
                 str += code[i++];
+                column++;
+            }
             i++;
-            tokens.push_back({STRING, str});
+            column++;
+            add(STRING, str, tokLine, tokCol);
             continue;
         }
 
-        switch (code[i]) {
+        char c = code[i];
+        switch (c) {
             case '=':
-                if (code[i+1] == '=') {
-                    tokens.push_back({EQ, "=="});
+                if (i + 1 < (int)code.size() && code[i + 1] == '=') {
+                    add(EQ, "==", tokLine, tokCol);
                     i += 2;
+                    column += 2;
                 } else {
-                    tokens.push_back({EQUALS, "="});
+                    add(EQUALS, "=", tokLine, tokCol);
                     i++;
+                    column++;
                 }
                 continue;
             case '!':
-                if (code[i+1] == '=') {
-                    tokens.push_back({NEQ, "!="});
+                if (i + 1 < (int)code.size() && code[i + 1] == '=') {
+                    add(NEQ, "!=", tokLine, tokCol);
                     i += 2;
+                    column += 2;
                 }
                 continue;
-            case '>': tokens.push_back({GT,       ">"}); break;
-            case '<': tokens.push_back({LT,       "<"}); break;
-            case '+': tokens.push_back({PLUS,     "+"}); break;
-            case '-': tokens.push_back({MINUS,    "-"}); break;
-            case '*': tokens.push_back({STAR,     "*"}); break;
-            case '&': tokens.push_back({AMP,      "&"}); break;
-            case '/': tokens.push_back({SLASH,    "/"}); break;
-            case ';': tokens.push_back({SEMICOLON,";"}); break;
-            case '(': tokens.push_back({LPAREN,   "("}); break;
-            case ')': tokens.push_back({RPAREN,   ")"}); break;
-            case '{': tokens.push_back({LBRACE,   "{"}); break;
-            case '}': tokens.push_back({RBRACE,   "}"}); break;
-            case ',': tokens.push_back({COMMA,    ","}); break;
-            case '[': tokens.push_back({LBRACKET, "["}); break;
-            case ']': tokens.push_back({RBRACKET, "]"}); break;
+            case '>': add(GT, ">", tokLine, tokCol); break;
+            case '<': add(LT, "<", tokLine, tokCol); break;
+            case '+': add(PLUS, "+", tokLine, tokCol); break;
+            case '-': add(MINUS, "-", tokLine, tokCol); break;
+            case '*': add(STAR, "*", tokLine, tokCol); break;
+            case '&': add(AMP, "&", tokLine, tokCol); break;
+            case '/': add(SLASH, "/", tokLine, tokCol); break;
+            case ';': add(SEMICOLON, ";", tokLine, tokCol); break;
+            case '(': add(LPAREN, "(", tokLine, tokCol); break;
+            case ')': add(RPAREN, ")", tokLine, tokCol); break;
+            case '{': add(LBRACE, "{", tokLine, tokCol); break;
+            case '}': add(RBRACE, "}", tokLine, tokCol); break;
+            case ',': add(COMMA, ",", tokLine, tokCol); break;
+            case '[': add(LBRACKET, "[", tokLine, tokCol); break;
+            case ']': add(RBRACKET, "]", tokLine, tokCol); break;
+            case '.': add(DOT, ".", tokLine, tokCol); break;
             default:
-                std::cerr << "Неизвестный символ: " << code[i] << std::endl;
+                std::cerr << "Ошибка " << tokLine << ":" << tokCol
+                          << " неизвестный символ: " << c << std::endl;
                 exit(1);
         }
         i++;
+        column++;
     }
 
-    tokens.push_back({END, ""});
+    add(END, "", line, column);
     return tokens;
 }

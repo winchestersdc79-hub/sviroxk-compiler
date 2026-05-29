@@ -20,6 +20,7 @@ enum TokenType {
     // Вывод
     SLOV,
     // Символы
+    DOT,
     EQUALS, SEMICOLON,
     LPAREN, RPAREN,
     LBRACE, RBRACE,
@@ -42,6 +43,8 @@ enum TokenType {
 struct Token {
     TokenType type;
     std::string value;
+    int line = 1;
+    int column = 1;
 };
 
 std::vector<Token> tokenize(const std::string& code);

@@ -36,7 +36,8 @@ int main(int argc, char* argv[]) {
                 impTokens.pop_back(); // убираем END
                 for (auto& t : impTokens) allTokens.push_back(t);
             }
-            i += 2; // пропускаем IMP и имя файла и ;
+            while (i < (int)tokens.size() && tokens[i].type != SEMICOLON) i++;
+            if (i < (int)tokens.size() && tokens[i].type == SEMICOLON) i++;
         } else {
             allTokens.push_back(tokens[i]);
         }

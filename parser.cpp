@@ -8,18 +8,25 @@ Token peek() { return gtokens[pos]; }
 Token consume() { return gtokens[pos++]; }
 
 Token expect(TokenType type) {
+    Token at = peek();
     Token t = consume();
     if (t.type != type) {
-        std::cerr << "Ошибка pos=" << pos << " ожидал=" << type << " prev=[" << gtokens[pos-2].value << "] got=[" << t.value << "]" << std::endl;
+        std::cerr << "Ошибка " << at.line << ":" << at.column
+                  << " ожидался другой токен, получено [" << t.value << "]"
+                  << std::endl;
         exit(1);
     }
     return t;
 }
 
 Node parseExpr();
+Node parsePrimary();
+Node parseUnary();
+Node parseMul();
+Node parseAdd();
 std::vector<Node> parseBlock();
 
-Node parseExpr() {
+Node parsePrimary() {
     Node left;
     // (dor)x — приведение типов
     if (peek().type == LPAREN && pos+1 < (int)gtokens.size() &&
@@ -43,13 +50,6 @@ Node parseExpr() {
         left.type = NODE_NUMBER; left.value = "0";
         return left;
     }
-    if (peek().type == MINUS) {
-        consume();
-        Token num = consume();
-        left.type = NODE_NUMBER;
-        left.value = "-" + num.value;
-        return left;
-    }
     // математика
     if (peek().type == SQRT || peek().type == ABS ||
         peek().type == POW  || peek().type == MAX ||
@@ -57,7 +57,7 @@ Node parseExpr() {
         peek().type == FLO  || peek().type == CEL ||
         peek().type == RON  || peek().type == RAN ||
         peek().type == SER  || peek().type == REP ||
-        peek().type == VV_S || peek().type == STR) {
+        peek().type == STR) {
         Node left;
         left.type = NODE_FUNC_CALL;
         left.varName = consume().value;
@@ -73,6 +73,16 @@ Node parseExpr() {
     if (peek().type == VD) {
         consume();
         Node left; left.type = NODE_INPUT;
+        expect(LPAREN);
+        left.value = consume().value;
+        expect(RPAREN);
+        return left;
+    }
+    // vv_s — ввод строки (в выражении)
+    if (peek().type == VV_S) {
+        consume();
+        Node left; left.type = NODE_INPUT;
+        left.varType = "cos";
         expect(LPAREN);
         left.value = consume().value;
         expect(RPAREN);
@@ -137,7 +147,13 @@ Node parseExpr() {
     }
     else if (t.type == IDENTIFIER) {
         left.type = NODE_IDENTIFIER; left.value = t.value;
-        if (peek().type == LBRACKET) {
+        if (peek().type == DOT) {
+            consume();
+            Token field = consume();
+            left.type = NODE_STRUCT_FIELD;
+            left.varName = t.value;
+            left.op = field.value;
+        } else if (peek().type == LBRACKET) {
             consume();
             Node* access = new Node();
             access->type = NODE_ARRAY_ACCESS;
@@ -147,29 +163,70 @@ Node parseExpr() {
             left = *access;
         }
     }
+    return left;
+}
 
-    Token next = peek();
-    if (next.value == "+" || next.value == "-" ||
-        next.value == "*" || next.value == "/" ||
-        next.value == "+") {
+Node parseUnary() {
+    if (peek().type == MINUS) {
         consume();
+        if (peek().type == NUMBER) {
+            Token num = consume();
+            Node n;
+            n.type = NODE_NUMBER;
+            n.value = "-" + num.value;
+            return n;
+        }
+        Node n;
+        n.type = NODE_BINOP;
+        n.op = "-";
+        n.left = new Node();
+        n.left->type = NODE_NUMBER;
+        n.left->value = "0";
+        n.right = new Node(parseUnary());
+        return n;
+    }
+    return parsePrimary();
+}
+
+// * и / — умножение и деление (+ и - в parseAdd). Символы те же: + - * /
+Node parseMul() {
+    Node left = parseUnary();
+    while (peek().type == STAR || peek().type == SLASH) {
+        std::string op = consume().value;
         Node* b = new Node();
         b->type = NODE_BINOP;
-        b->op = next.value;
+        b->op = op;
         b->left = new Node(left);
-        b->right = new Node(parseExpr());
-        return *b;
+        b->right = new Node(parseUnary());
+        left = *b;
     }
     return left;
 }
 
+Node parseAdd() {
+    Node left = parseMul();
+    while (peek().type == PLUS || peek().type == MINUS) {
+        std::string op = consume().value;
+        Node* b = new Node();
+        b->type = NODE_BINOP;
+        b->op = op;
+        b->left = new Node(left);
+        b->right = new Node(parseMul());
+        left = *b;
+    }
+    return left;
+}
+
+Node parseExpr() {
+    return parseAdd();
+}
+
 Node parseCond() {
-    Node left = parseExpr();
-    Token next = peek();
-    if (next.value == ">" || next.value == "<" ||
-        next.value == "==" || next.value == "!=") {
+    Node left = parseAdd();
+    if (peek().type == GT || peek().type == LT ||
+        peek().type == EQ || peek().type == NEQ) {
         Token op = consume();
-        Node right = parseExpr();
+        Node right = parseAdd();
         Node* c = new Node();
         c->type = NODE_BINOP;
         c->op = op.value;
@@ -195,8 +252,19 @@ Node parseOne() {
     // svi
     if (peek().type == SVI) {
         consume();
+        if (peek().type == TIP) {
+            consume();
+            std::string structName = consume().value;
+            expect(LOR);
+            std::string varName = consume().value;
+            expect(SEMICOLON);
+            Node node;
+            node.type = NODE_STRUCT_INSTANCE;
+            node.varType = structName;
+            node.varName = varName;
+            return node;
+        }
         std::string varType = consume().value;
-        // проверяем массив svi rox[] lor
         bool isArray = false;
         if (peek().type == LBRACKET) {
             consume(); expect(RBRACKET);
@@ -279,53 +347,25 @@ Node parseOne() {
         expect(SEMICOLON);
         return node;
     }
-    // математика
+    // мат. функции / str как оператор
     if (peek().type == SQRT || peek().type == ABS ||
         peek().type == POW  || peek().type == MAX ||
         peek().type == MIN  || peek().type == AR  ||
         peek().type == FLO  || peek().type == CEL ||
         peek().type == RON  || peek().type == RAN ||
         peek().type == SER  || peek().type == REP ||
-        peek().type == VV_S || peek().type == STR) {
-        Node left;
-    if (peek().type == MINUS) {
-        consume();
-        Token num = consume();
-        left.type = NODE_NUMBER;
-        left.value = "-" + num.value;
-        return left;
+        peek().type == STR) {
+        Node node = parseExpr();
+        expect(SEMICOLON);
+        return node;
     }
-        left.type = NODE_FUNC_CALL;
-        left.varName = consume().value;
-        expect(LPAREN);
-        while (peek().type != RPAREN && peek().type != END) {
-            left.args.push_back(parseExpr());
-            if (peek().type == COMMA) consume();
-        }
-        expect(RPAREN);
-        return left;
-    }
-    // vd — ввод с клавиатуры
+    // vd — ввод числа (оператор)
     if (peek().type == VD) {
-        consume();
-        Node left; left.type = NODE_INPUT;
-        expect(LPAREN);
-        left.value = consume().value;
-        expect(RPAREN);
-        return left;
+        Node node = parseExpr();
+        expect(SEMICOLON);
+        return node;
     }
-    // nw — создать динамический массив
-    if (peek().type == NW) {
-        consume();
-        Node left; left.type = NODE_DYN_ARRAY;
-        left.varType = consume().value; // тип (rox etc)
-        expect(LBRACKET);
-        left.left = new Node(parseExpr()); // размер
-        expect(RBRACKET);
-        return left;
-    }
-    // atk — открыть файл (используется в parseExpr через svi)
-    // vv_s — ввод строки
+    // vv_s — ввод строки (оператор)
     if (peek().type == VV_S) {
         consume();
         Node node; node.type = NODE_INPUT;
@@ -390,8 +430,22 @@ Node parseOne() {
         expect(SEMICOLON);
         return node;
     }
+    // p.health = 10 — поле структуры
+    if (peek().type == IDENTIFIER && pos + 3 < (int)gtokens.size() &&
+        gtokens[pos + 1].type == DOT && gtokens[pos + 3].type == EQUALS) {
+        std::string inst = consume().value;
+        consume();
+        std::string field = consume().value;
+        Node node;
+        node.type = NODE_ASSIGN;
+        node.varName = inst + "_" + field;
+        expect(EQUALS);
+        node.left = new Node(parseExpr());
+        expect(SEMICOLON);
+        return node;
+    }
     // arr[0] = 10 — присваивание элемента массива
-    if (peek().type == IDENTIFIER && pos+1 < gtokens.size() && gtokens[pos+1].type == LBRACKET) {
+    if (peek().type == IDENTIFIER && pos+1 < (int)gtokens.size() && gtokens[pos+1].type == LBRACKET) {
         Node node; node.type = NODE_ARRAY_ASSIGN;
         node.varName = consume().value;
         consume(); // [
@@ -475,7 +529,8 @@ Node parseOne() {
         return node;
     }
 
-    std::cerr << "Неизвестная конструкция: [" << peek().value << "] pos=" << pos << std::endl;
+    std::cerr << "Ошибка " << peek().line << ":" << peek().column
+              << " неизвестная конструкция: [" << peek().value << "]" << std::endl;
     exit(1);
 }
 
