@@ -31,7 +31,7 @@ for source in "${sources[@]}"; do
     mkdir -p "$work"
     echo "=== $source ==="
 
-    if (ulimit -c 0; timeout --signal=TERM 15s ./sviroxk "$source" >"$work/module.ll" 2>"$work/compiler.err"); then
+    if (ulimit -c 0; timeout --signal=TERM 15s ./sc "$source" >"$work/module.ll" 2>"$work/compiler.err"); then
         :
     else
         status=$?

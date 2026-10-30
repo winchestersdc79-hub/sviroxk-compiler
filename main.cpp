@@ -7,7 +7,7 @@
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        std::cerr << "Использование: sviroxk <файл.svx>" << std::endl;
+        std::cerr << "Использование: sc <файл.svx>" << std::endl;
         return 1;
     }
 

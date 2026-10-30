@@ -30,7 +30,7 @@ public:
     llvm::Function* putsFunc = nullptr;
     llvm::Function* printfFunc = nullptr;
 
-    CodeGen() : builder(context), module("sviroxk", context) {}
+    CodeGen() : builder(context), module("SC", context) {}
 
     llvm::Value* getStringPtr(const std::string& str);
 
