@@ -287,15 +287,35 @@ private:
 
     std::string binary(const Node& node) {
         std::string left = expression(*node.left);
-        std::string right = expression(*node.right);
+        if (node.op == "!") {
+            if (left == "<error>") return "<error>";
+            if (left != "bool" && !isInteger(left))
+                error(node, "оператор ! ожидает bool или целое число");
+            return "bool";
+        }
+        std::string right = node.right ? expression(*node.right) : std::string("<error>");
         if (left == "<error>" || right == "<error>") return "<error>";
-        if (isInteger(left) && isInteger(right)) {
+        if (node.op == "&&" || node.op == "||") {
+            if ((left != "bool" && !isInteger(left)) ||
+                (right != "bool" && !isInteger(right)))
+                error(node, "логические операторы ожидают bool или целые числа");
+            return "bool";
+        }
+        if (isInteger(left) && isInteger(right) &&
+            (node.op == ">" || node.op == "<" || node.op == ">=" || node.op == "<=" ||
+             node.op == "==" || node.op == "!=")) {
             const bool leftUnsigned = left[0] == 'u';
             const bool rightUnsigned = right[0] == 'u';
-            const bool rightLiteralFitsLeft = node.right->type == NODE_NUMBER &&
-                literalFits(left, node.right->value);
-            const bool leftLiteralFitsRight = node.left->type == NODE_NUMBER &&
-                literalFits(right, node.left->value);
+            if (leftUnsigned != rightUnsigned) {
+                error(node, "нельзя сравнивать signed- и unsigned-типы без явного преобразования");
+                return "<error>";
+            }
+        }
+        if (isInteger(left) && isInteger(right) &&
+            node.op != ">" && node.op != "<" && node.op != ">=" && node.op != "<=" &&
+            node.op != "==" && node.op != "!=") {
+            const bool leftUnsigned = left[0] == 'u';
+            const bool rightUnsigned = right[0] == 'u';
             if (leftUnsigned != rightUnsigned) {
                 const std::string unsignedType = leftUnsigned ? left : right;
                 const std::string signedType = leftUnsigned ? right : left;
@@ -308,8 +328,8 @@ private:
             }
         }
         const std::set<std::string> numeric = {"i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64"};
-        const bool comparison = node.op == ">" || node.op == "<" ||
-            node.op == "==" || node.op == "!=";
+        const bool comparison = node.op == ">" || node.op == "<" || node.op == ">=" ||
+            node.op == "<=" || node.op == "==" || node.op == "!=";
         if (comparison) {
             if (!numeric.count(left) || !numeric.count(right)) {
                 error(node, "оператор сравнения принимает только числа");
@@ -531,7 +551,7 @@ private:
             const Symbol* array = lookup(node.varName);
             if (!array) error(node, "неизвестный массив '" + node.varName + "'");
             std::string index = expression(*node.left);
-            if (index != "rox" && index != "rox64" && index != "<error>") error(*node.left, "индекс массива должен быть целым числом");
+            if (!isInteger(index) && index != "<error>") error(*node.left, "индекс массива должен быть целым числом");
             std::string value = expression(*node.right);
             if (array && array->type.rfind("array<", 0) == 0) {
                 std::string element = array->type.substr(6, array->type.size() - 7);

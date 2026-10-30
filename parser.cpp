@@ -95,6 +95,12 @@ Node parsePrimary() {
         left.left = new Node(parseExpr());
         return left;
     }
+    if (peek().type == LPAREN) {
+        consume();
+        Node grouped = parseExpr();
+        expect(RPAREN, "')'");
+        return grouped;
+    }
     if (peek().type == TRUE_T) {
         Token token = consume();
         left.type = NODE_NUMBER; left.value = "1";
@@ -246,6 +252,18 @@ Node parsePrimary() {
 }
 
 Node parseUnary() {
+    if (peek().type == BANG) {
+        Token op = consume();
+        Node node; node.type = NODE_BINOP;
+        node.line = op.line; node.column = op.column;
+        node.op = "!";
+        node.left = new Node(parseUnary());
+        node.right = new Node();
+        node.right->type = NODE_NUMBER;
+        node.right->value = "0";
+        node.right->varType = "bool";
+        return node;
+    }
     if (peek().type == MINUS) {
         consume();
         if (peek().type == NUMBER) {
@@ -298,39 +316,47 @@ Node parseAdd() {
     return left;
 }
 
-Node parseExpr() {
+static Node makeBinary(Node left, const Token& op, Node right) {
+    Node result;
+    result.type = NODE_BINOP;
+    result.line = op.line;
+    result.column = op.column;
+    result.op = op.value;
+    result.left = new Node(left);
+    result.right = new Node(right);
+    return result;
+}
+
+Node parseCompare() {
     Node left = parseAdd();
-    if (peek().type == GT || peek().type == LT ||
-        peek().type == EQ || peek().type == NEQ) {
+    while (peek().type == GT || peek().type == LT || peek().type == GE ||
+           peek().type == LE || peek().type == EQ || peek().type == NEQ) {
         Token op = consume();
-        Node right = parseAdd();
-        Node comparison;
-        comparison.type = NODE_BINOP;
-        comparison.line = op.line;
-        comparison.column = op.column;
-        comparison.op = op.value;
-        comparison.left = new Node(left);
-        comparison.right = new Node(right);
-        return comparison;
+        left = makeBinary(left, op, parseAdd());
+    }
+    return left;
+}
+
+Node parseLogicalAnd() {
+    Node left = parseCompare();
+    while (peek().type == AND_AND) {
+        Token op = consume();
+        left = makeBinary(left, op, parseCompare());
+    }
+    return left;
+}
+
+Node parseExpr() {
+    Node left = parseLogicalAnd();
+    while (peek().type == OR_OR) {
+        Token op = consume();
+        left = makeBinary(left, op, parseLogicalAnd());
     }
     return left;
 }
 
 Node parseCond() {
-    Node left = parseAdd();
-    if (peek().type == GT || peek().type == LT ||
-        peek().type == EQ || peek().type == NEQ) {
-        Token op = consume();
-        Node right = parseAdd();
-        Node* c = new Node();
-        c->type = NODE_BINOP;
-        c->line = op.line; c->column = op.column;
-        c->op = op.value;
-        c->left = new Node(left);
-        c->right = new Node(right);
-        return *c;
-    }
-    return left;
+    return parseExpr();
 }
 
 Node parseOne();
@@ -672,16 +698,6 @@ Node parseOne() {
         node.type = (kind.type == CEH) ? NODE_LOOP_N : NODE_LOOP_W;
         expect(LPAREN);
         node.left = new Node(parseExpr());
-        if (node.type == NODE_LOOP_W) {
-            Token op = consume();
-            Node right = parseExpr();
-            Node* cond = new Node();
-            cond->type = NODE_BINOP;
-            cond->op = op.value;
-            cond->left = node.left;
-            cond->right = new Node(right);
-            node.left = cond;
-        }
         expect(RPAREN);
         expect(LBRACE);
         node.children = parseBlock();

@@ -21,7 +21,7 @@ enum TokenType {
     SLOV,
     // Символы
     DOT,
-    EQUALS, SEMICOLON,
+    EQUALS, SEMICOLON, LE, GE, AND_AND, OR_OR, BANG,
     LPAREN, RPAREN,
     LBRACE, RBRACE,
     LBRACKET, RBRACKET, COMMA,

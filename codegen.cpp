@@ -284,7 +284,18 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
     }
     if (node.type == NODE_BINOP) {
         llvm::Value* L = genExpr(*node.left);
+        if (node.op == "!") {
+            if (L->getType()->isIntegerTy(1)) return builder.CreateNot(L);
+            return builder.CreateICmpEQ(L, llvm::ConstantInt::get(L->getType(), 0));
+        }
         llvm::Value* R = genExpr(*node.right);
+        if (node.op == "&&" || node.op == "||") {
+            if (!L->getType()->isIntegerTy(1))
+                L = builder.CreateICmpNE(L, llvm::ConstantInt::get(L->getType(), 0));
+            if (!R->getType()->isIntegerTy(1))
+                R = builder.CreateICmpNE(R, llvm::ConstantInt::get(R->getType(), 0));
+            return node.op == "&&" ? builder.CreateAnd(L, R) : builder.CreateOr(L, R);
+        }
         bool isFloat = L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy();
         if (isFloat) {
             llvm::Type* common = L->getType()->isDoubleTy() || R->getType()->isDoubleTy()
@@ -297,6 +308,8 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             if (node.op == "/") return builder.CreateFDiv(L, R);
             if (node.op == ">") return builder.CreateFCmpOGT(L, R);
             if (node.op == "<") return builder.CreateFCmpOLT(L, R);
+            if (node.op == ">=") return builder.CreateFCmpOGE(L, R);
+            if (node.op == "<=") return builder.CreateFCmpOLE(L, R);
             if (node.op == "==") return builder.CreateFCmpOEQ(L, R);
             if (node.op == "!=") return builder.CreateFCmpONE(L, R);
         }
@@ -323,6 +336,10 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             ? builder.CreateICmpUGT(L, R) : builder.CreateICmpSGT(L, R);
         if (node.op == "<") return isUnsignedExpr(*node.left)
             ? builder.CreateICmpULT(L, R) : builder.CreateICmpSLT(L, R);
+        if (node.op == ">=") return isUnsignedExpr(*node.left)
+            ? builder.CreateICmpUGE(L, R) : builder.CreateICmpSGE(L, R);
+        if (node.op == "<=") return isUnsignedExpr(*node.left)
+            ? builder.CreateICmpULE(L, R) : builder.CreateICmpSLE(L, R);
         if (node.op == "==") return builder.CreateICmpEQ(L, R);
         if (node.op == "!=") return builder.CreateICmpNE(L, R);
     }

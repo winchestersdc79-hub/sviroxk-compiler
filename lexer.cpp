@@ -247,16 +247,36 @@ std::vector<Token> tokenize(const std::string& code) {
                     column += 2;
                     continue;
                 }
-                std::cerr << "Ошибка " << tokLine << ':' << tokCol
-                          << ": неизвестный оператор '!'; возможно, имелось в виду '!='"
-                          << std::endl;
-                std::exit(1);
-            case '>': add(GT, ">", tokLine, tokCol); break;
-            case '<': add(LT, "<", tokLine, tokCol); break;
+                add(BANG, "!", tokLine, tokCol);
+                ++i; ++column;
+                continue;
+            case '>':
+                if (i + 1 < (int)code.size() && code[i + 1] == '=') {
+                    add(GE, ">=", tokLine, tokCol); i += 2; column += 2;
+                } else { add(GT, ">", tokLine, tokCol); ++i; ++column; }
+                continue;
+            case '<':
+                if (i + 1 < (int)code.size() && code[i + 1] == '=') {
+                    add(LE, "<=", tokLine, tokCol); i += 2; column += 2;
+                } else { add(LT, "<", tokLine, tokCol); ++i; ++column; }
+                continue;
             case '+': add(PLUS, "+", tokLine, tokCol); break;
             case '-': add(MINUS, "-", tokLine, tokCol); break;
             case '*': add(STAR, "*", tokLine, tokCol); break;
-            case '&': add(AMP, "&", tokLine, tokCol); break;
+            case '&':
+                if (i + 1 < (int)code.size() && code[i + 1] == '&') {
+                    add(AND_AND, "&&", tokLine, tokCol); i += 2; column += 2;
+                    continue;
+                }
+                add(AMP, "&", tokLine, tokCol); break;
+            case '|':
+                if (i + 1 < (int)code.size() && code[i + 1] == '|') {
+                    add(OR_OR, "||", tokLine, tokCol); i += 2; column += 2;
+                    continue;
+                }
+                std::cerr << "Ошибка " << tokLine << ':' << tokCol
+                          << ": одиночный '|' не поддерживается; используйте '||'" << std::endl;
+                std::exit(1);
             case '/': add(SLASH, "/", tokLine, tokCol); break;
             case '%': add(PERCENT, "%", tokLine, tokCol); break;
             case ';': add(SEMICOLON, ";", tokLine, tokCol); break;
