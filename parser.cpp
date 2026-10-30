@@ -197,7 +197,7 @@ Node parsePrimary() {
     if (t.type == NUMBER) {
         left.type = NODE_NUMBER;
         left.value = t.value;
-        left.varType = t.value.find('.') == std::string::npos ? "i32" : "f64";
+        left.varType = t.value.find_first_of(".eE") == std::string::npos ? "i32" : "f64";
     }
     else if (t.type == STRING) { left.type = NODE_STRING; left.value = t.value; left.varType = "cos"; }
     else if (t.type == COP) {

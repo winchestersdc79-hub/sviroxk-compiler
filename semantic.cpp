@@ -113,9 +113,10 @@ private:
     static bool literalFits(const std::string& type, const std::string& text) {
         try {
             if (type == "f32" || type == "f64") {
-                double value = std::stod(text);
-                return type != "f32" || std::isfinite(value) &&
-                    std::fabs(value) <= std::numeric_limits<float>::max();
+                size_t parsed = 0;
+                double value = std::stod(text, &parsed);
+                if (parsed != text.size() || !std::isfinite(value)) return false;
+                return type != "f32" || std::fabs(value) <= std::numeric_limits<float>::max();
             }
             if (type == "i8") { auto v = std::stoll(text); return v >= -128 && v <= 127; }
             if (type == "i16") { auto v = std::stoll(text); return v >= -32768 && v <= 32767; }

@@ -4,6 +4,7 @@
 #include <cstdint>
 #include <climits>
 #include <cstdlib>
+#include <cmath>
 
 llvm::Value* CodeGen::getStringPtr(const std::string& str) {
     llvm::GlobalVariable* gv = builder.CreateGlobalString(str);
@@ -87,8 +88,16 @@ bool CodeGen::isUnsignedExpr(const Node& node) const {
 
 llvm::Value* CodeGen::genExpr(const Node& node) {
     if (node.type == NODE_NUMBER) {
-        if (node.value.find('.') != std::string::npos)
-            return llvm::ConstantFP::get(builder.getDoubleTy(), std::stod(node.value));
+        if (node.value.find_first_of(".eE") != std::string::npos) {
+            size_t parsed = 0;
+            double value = std::stod(node.value, &parsed);
+            if (parsed != node.value.size() || !std::isfinite(value)) {
+                std::cerr << "Ошибка: вещественный литерал вне диапазона f64: "
+                          << node.value << std::endl;
+                std::exit(1);
+            }
+            return llvm::ConstantFP::get(builder.getDoubleTy(), value);
+        }
         if (!node.value.empty() && node.value[0] == '-') {
             const long long signedValue = std::stoll(node.value);
             if (signedValue >= INT32_MIN && signedValue <= INT32_MAX)

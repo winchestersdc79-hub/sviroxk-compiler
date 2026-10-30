@@ -114,10 +114,50 @@ std::vector<Token> tokenize(const std::string& code) {
 
         if (isdigit(static_cast<unsigned char>(code[i]))) {
             std::string num;
-            while (i < (int)code.size() &&
-                   (isdigit(static_cast<unsigned char>(code[i])) || code[i] == '.')) {
+            bool malformed = false;
+            while (i < static_cast<int>(code.size()) &&
+                   isdigit(static_cast<unsigned char>(code[i]))) {
                 num += code[i++];
-                column++;
+                ++column;
+            }
+            if (i < static_cast<int>(code.size()) && code[i] == '.') {
+                num += code[i++];
+                ++column;
+                if (i >= static_cast<int>(code.size()) ||
+                    !isdigit(static_cast<unsigned char>(code[i]))) malformed = true;
+                while (i < static_cast<int>(code.size()) &&
+                       isdigit(static_cast<unsigned char>(code[i]))) {
+                    num += code[i++];
+                    ++column;
+                }
+            }
+            if (i < static_cast<int>(code.size()) && (code[i] == 'e' || code[i] == 'E')) {
+                num += code[i++];
+                ++column;
+                if (i < static_cast<int>(code.size()) && (code[i] == '+' || code[i] == '-')) {
+                    num += code[i++];
+                    ++column;
+                }
+                if (i >= static_cast<int>(code.size()) ||
+                    !isdigit(static_cast<unsigned char>(code[i]))) malformed = true;
+                while (i < static_cast<int>(code.size()) &&
+                       isdigit(static_cast<unsigned char>(code[i]))) {
+                    num += code[i++];
+                    ++column;
+                }
+            }
+            if (i < static_cast<int>(code.size()) && code[i] == '.') {
+                malformed = true;
+                while (i < static_cast<int>(code.size()) &&
+                       (isdigit(static_cast<unsigned char>(code[i])) || code[i] == '.')) {
+                    num += code[i++];
+                    ++column;
+                }
+            }
+            if (malformed) {
+                std::cerr << "Ошибка " << tokLine << ':' << tokCol
+                          << ": некорректный числовой литерал '" << num << "'" << std::endl;
+                std::exit(1);
             }
             add(NUMBER, num, tokLine, tokCol);
             continue;

@@ -1,0 +1,6 @@
+double thousand = 1e3;
+double small_fraction = 1.25e-2;
+f32 scaled = 1.25e+2;
+print(thousand);
+print(small_fraction);
+print(scaled);
