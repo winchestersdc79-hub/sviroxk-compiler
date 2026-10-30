@@ -188,27 +188,22 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
     }
     if (node.type == NODE_CAST) {
         llvm::Value* val = genExpr(*node.left);
-        if (node.varType == "dor") {
-            if (val->getType()->isIntegerTy())
-                return builder.CreateSIToFP(val, builder.getDoubleTy());
-            return val;
+        llvm::Type* target = svType(node.varType);
+        if (val->getType()->isFloatingPointTy() && target->isFloatingPointTy())
+            return castTo(val, target);
+        if (val->getType()->isFloatingPointTy() && target->isIntegerTy())
+            return builder.CreateFPToSI(val, target);
+        if (val->getType()->isIntegerTy() && target->isFloatingPointTy()) {
+            llvm::Value* converted = isUnsignedExpr(*node.left)
+                ? builder.CreateUIToFP(val, target) : builder.CreateSIToFP(val, target);
+            return converted;
         }
-        if (node.varType == "rox") {
-            if (val->getType()->isDoubleTy())
-                return builder.CreateFPToSI(val, builder.getInt32Ty());
-            return val;
-        }
-        if (node.varType == "rox64") {
-            if (val->getType()->isDoubleTy())
-                return builder.CreateFPToSI(val, builder.getInt64Ty());
-            if (val->getType()->isIntegerTy(32))
-                return builder.CreateSExt(val, builder.getInt64Ty());
-            return val;
-        }
-        if (node.varType == "chr") {
-            if (val->getType()->isIntegerTy(32))
-                return builder.CreateTrunc(val, builder.getInt8Ty());
-            return val;
+        if (val->getType()->isIntegerTy() && target->isIntegerTy()) {
+            if (val->getType()->getIntegerBitWidth() == target->getIntegerBitWidth()) return val;
+            if (val->getType()->getIntegerBitWidth() > target->getIntegerBitWidth())
+                return builder.CreateTrunc(val, target);
+            return isUnsignedExpr(*node.left)
+                ? builder.CreateZExt(val, target) : builder.CreateSExt(val, target);
         }
         return val;
     }

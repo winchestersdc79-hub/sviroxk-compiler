@@ -1,0 +1,10 @@
+i8 small = (i8) 127;
+u8 packet = (u8) 255;
+f32 ratio = (f32) 1.25;
+f64 precise = (f64) ratio;
+i32 promoted = (i32) small;
+print(small);
+print(packet);
+print(ratio);
+print(precise);
+print(promoted);

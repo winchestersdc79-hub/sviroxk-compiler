@@ -34,6 +34,7 @@ sources=(
     "examples/comparisons.svx"
     "examples/scientific.svx"
     "examples/stdlib_math.svx"
+    "examples/casts.svx"
 )
 
 for source in "${sources[@]}"; do
@@ -131,6 +132,13 @@ for source in "${sources[@]}"; do
             cat "$work/output.txt" >&2
             exit 1
         fi
+    elif [[ "$source" == "examples/casts.svx" ]]; then
+        expected=$'127\n255\n1.250000\n1.250000\n127'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: explicit numeric cast mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
     fi
     cat "$work/output.txt"
 done
@@ -177,6 +185,7 @@ expect_compile_error "unknown-function-argument" 'fn add(int value) { return val
 expect_compile_error "invalid-arithmetic" 'let result: int = "text" + 1;'
 expect_compile_error "wrong-assignment-type" 'let result: int = "text";'
 expect_compile_error "i8-overflow" 'i8 value = 128;'
+expect_compile_error "i8-cast-overflow" 'i8 value = (i8) 128;'
 expect_compile_error "u8-overflow" 'u8 value = 256;'
 expect_compile_error "i16-overflow" 'i16 value = 32768;'
 expect_compile_error "i8-underflow" 'i8 value = -129;'

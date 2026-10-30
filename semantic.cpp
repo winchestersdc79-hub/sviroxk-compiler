@@ -235,6 +235,9 @@ private:
             else if (!numeric.count(target) || !numeric.count(source))
                 error(node, "явное преобразование между '" + typeName(source) +
                             "' и '" + typeName(target) + "' не поддерживается");
+            else if (node.left->type == NODE_NUMBER &&
+                     isInteger(target) && !literalFits(target, node.left->value))
+                error(node, "числовой литерал вне диапазона типа '" + typeName(target) + "'");
             return target;
         }
         case NODE_ADDR: {

@@ -84,14 +84,14 @@ std::vector<Node> parseBlock();
 Node parsePrimary() {
     Node left;
     // (dor)x — приведение типов
-    if (peek().type == LPAREN &&
-        (peek(1).type == ROX || peek(1).type == DOR ||
-         peek(1).type == CHR || peek(1).type == ROX64)) {
+    if (peek().type == LPAREN && isTypeName(peek(1).value)) {
         consume(); // (
-        std::string castType = consume().value;
-        consume(); // )
+        Token castToken = consume();
+        expect(RPAREN, "')'");
         left.type = NODE_CAST;
-        left.varType = castType;
+        left.varType = canonicalType(castToken.value);
+        left.line = castToken.line;
+        left.column = castToken.column;
         left.left = new Node(parseExpr());
         return left;
     }
