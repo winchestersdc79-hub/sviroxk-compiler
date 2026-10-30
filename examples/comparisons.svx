@@ -1,0 +1,15 @@
+i8 narrow_signed = -1;
+i64 wide_signed = -2;
+u8 narrow_unsigned = 250;
+u64 wide_unsigned = 249;
+
+if (narrow_signed > wide_signed) {
+    print(1);
+} else {
+    print(0);
+}
+if (narrow_unsigned > wide_unsigned) {
+    print(1);
+} else {
+    print(0);
+}

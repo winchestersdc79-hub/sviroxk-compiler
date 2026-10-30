@@ -304,15 +304,17 @@ private:
             }
         }
         const std::set<std::string> numeric = {"i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64"};
-        if (node.op == ">" || node.op == "<") {
-            if (!numeric.count(left) || !numeric.count(right))
-                error(node, "оператор '" + node.op + "' принимает только числа");
-            return "bool";
-        }
-        if (node.op == "==" || node.op == "!=") {
-            if (!compatible(left, right) && !compatible(right, left))
-                error(node, "нельзя сравнивать значения типов '" + typeName(left) +
-                            "' и '" + typeName(right) + "'");
+        const bool comparison = node.op == ">" || node.op == "<" ||
+            node.op == "==" || node.op == "!=";
+        if (comparison) {
+            if (!numeric.count(left) || !numeric.count(right)) {
+                error(node, "оператор сравнения принимает только числа");
+                return "<error>";
+            }
+            if (isInteger(left) && isInteger(right) && left[0] != right[0]) {
+                error(node, "нельзя сравнивать signed- и unsigned-типы без явного преобразования");
+                return "<error>";
+            }
             return "bool";
         }
         if (!numeric.count(left) || !numeric.count(right)) {

@@ -31,6 +31,7 @@ sources=(
     "examples/fixed_width_args.svx"
     "examples/signedness.svx"
     "examples/remainder.svx"
+    "examples/comparisons.svx"
 )
 
 for source in "${sources[@]}"; do
@@ -107,6 +108,13 @@ for source in "${sources[@]}"; do
             cat "$work/output.txt" >&2
             exit 1
         fi
+    elif [[ "$source" == "examples/comparisons.svx" ]]; then
+        expected=$'1\n1'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: mixed-width comparisons mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
     fi
     cat "$work/output.txt"
 done
@@ -169,6 +177,7 @@ expect_compile_error "f32-overflow" 'f32 value = 1e999;'
 expect_compile_error "exact-array-not-yet-supported" 'i16[] values = [1, 2];'
 expect_compile_error "unsigned-mixed-sign" 'u32 positive = 1; i32 signed = -1; let result: int = positive + signed;'
 expect_compile_error "unsigned-width-mix" 'u64 large = 2; i64 signed = -1; let result: i64 = large + signed;'
+expect_compile_error "mixed-signedness-comparison" 'u32 unsigned_value = 1; i32 signed_value = 1; if (unsigned_value > signed_value) { print(1); }'
 expect_compile_error "unknown-type" 'mystery value = 1;'
 expect_compile_error "duplicate-variable" 'let result: int = 1; let result: int = 2;'
 expect_compile_error "break-outside-loop" 'brk;'
