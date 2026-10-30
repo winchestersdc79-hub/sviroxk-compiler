@@ -10,15 +10,17 @@ fi
 BUILD_DIR=$(mktemp -d)
 trap 'rm -rf "$BUILD_DIR"' EXIT
 CXX=${CXX:-clang++}
+# Optional extra diagnostics/sanitizers, e.g. CXXFLAGS='-Wall -Wextra -fsanitize=address,undefined'.
+read -r -a EXTRA_CXXFLAGS <<< "${CXXFLAGS:-}"
 LLVM_CXXFLAGS=$(llvm-config --cxxflags)
 LLVM_LDFLAGS=$(llvm-config --ldflags --libs)
 
 for source in main lexer parser semantic codegen; do
-    "$CXX" -c "$source.cpp" $LLVM_CXXFLAGS -fexceptions -o "$BUILD_DIR/$source.o"
+    "$CXX" -c "$source.cpp" $LLVM_CXXFLAGS "${EXTRA_CXXFLAGS[@]}" -fexceptions -o "$BUILD_DIR/$source.o"
 done
 
 "$CXX" "$BUILD_DIR/main.o" "$BUILD_DIR/lexer.o" \
     "$BUILD_DIR/parser.o" "$BUILD_DIR/semantic.o" "$BUILD_DIR/codegen.o" \
-    $LLVM_LDFLAGS -fexceptions -o sc
+    $LLVM_LDFLAGS "${EXTRA_CXXFLAGS[@]}" -fexceptions -o sc
 chmod +x run.sh build.sh test.sh 2>/dev/null || true
 echo "Сборка SC завершена"

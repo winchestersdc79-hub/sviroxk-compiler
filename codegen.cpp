@@ -766,9 +766,6 @@ void CodeGen::genNode(const Node& node) {
         llvm::Function* fputsF = module.getFunction("fputs");
         if (!fputsF) fputsF = llvm::Function::Create(fputsType,
             llvm::Function::ExternalLinkage, "fputs", module);
-        llvm::FunctionType* fcloseType =
-            llvm::FunctionType::get(builder.getInt32Ty(),
-                {builder.getPtrTy()}, false);
         llvm::AllocaInst* fileAlloca = vars[node.varName];
         if (fileAlloca) {
             llvm::Value* filePtr =

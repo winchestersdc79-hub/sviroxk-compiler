@@ -153,11 +153,11 @@ private:
         std::string expected = normalize(expectedRaw);
         std::string actual = normalize(actualRaw);
         if (expected == actual ||
-               (expected == "f32" || expected == "f64") &&
-                   (actual == "i8" || actual == "i16" || actual == "i32" || actual == "i64" ||
-                    actual == "u8" || actual == "u16" || actual == "u32" || actual == "u64") ||
-               expected == "i64" && (actual == "i8" || actual == "i16" || actual == "i32") ||
-               expected == "u64" && (actual == "u8" || actual == "u16" || actual == "u32")) return true;
+            ((expected == "f32" || expected == "f64") &&
+             (actual == "i8" || actual == "i16" || actual == "i32" || actual == "i64" ||
+              actual == "u8" || actual == "u16" || actual == "u32" || actual == "u64")) ||
+            (expected == "i64" && (actual == "i8" || actual == "i16" || actual == "i32")) ||
+            (expected == "u64" && (actual == "u8" || actual == "u16" || actual == "u32"))) return true;
         return false;
     }
 
