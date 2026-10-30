@@ -21,6 +21,7 @@ sources=(
     "test.svx"
     "examples/struct.svx"
     "examples/struct_init.svx"
+    "examples/array_write.svx"
     "examples/dor_func.svx"
     "examples/full.svx"
     "examples/modern.svx"
@@ -123,6 +124,13 @@ for source in "${sources[@]}"; do
         expected=$'1000.000000\n0.012500\n125.000000'
         if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
             echo "FAIL: exponent float literal mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/array_write.svx" ]]; then
+        expected=$'9'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: array element assignment/read mismatch" >&2
             cat "$work/output.txt" >&2
             exit 1
         fi
