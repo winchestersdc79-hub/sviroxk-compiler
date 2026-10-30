@@ -24,6 +24,14 @@ static bool isTypeToken(TokenType t) {
            t == FILE_T || t == CHR || t == ROX64;
 }
 
+static std::string canonicalType(const std::string& type) {
+    if (type == "int") return "rox";
+    if (type == "float") return "dor";
+    if (type == "string") return "cos";
+    if (type == "bool") return "bue";
+    return type;
+}
+
 Node parseExpr();
 Node parsePrimary();
 Node parseUnary();
@@ -152,7 +160,21 @@ Node parsePrimary() {
     }
     else if (t.type == IDENTIFIER) {
         left.type = NODE_IDENTIFIER; left.value = t.value;
-        if (peek().type == DOT) {
+        if (peek().type == LPAREN) {
+            left.type = NODE_FUNC_CALL;
+            left.varName = t.value;
+            consume();
+            while (peek().type != RPAREN && peek().type != END) {
+                left.args.push_back(parseExpr());
+                if (peek().type == COMMA) consume();
+                else if (peek().type != RPAREN) {
+                    std::cerr << "Ошибка " << peek().line << ":" << peek().column
+                              << " ожидалась запятая или )" << std::endl;
+                    exit(1);
+                }
+            }
+            expect(RPAREN);
+        } else if (peek().type == DOT) {
             consume();
             Token field = consume();
             left.type = NODE_STRUCT_FIELD;
@@ -254,6 +276,18 @@ std::vector<Node> parseBlock() {
 }
 
 Node parseOne() {
+    // Short variable declaration: let count: int = 0;
+    if (peek().type == LET) {
+        consume();
+        Node node; node.type = NODE_VAR_DECL;
+        node.varName = expect(IDENTIFIER).value;
+        expect(COLON);
+        node.varType = canonicalType(consume().value);
+        expect(EQUALS);
+        node.left = new Node(parseExpr());
+        expect(SEMICOLON);
+        return node;
+    }
     // svi
     if (peek().type == SVI) {
         consume();
@@ -290,7 +324,7 @@ Node parseOne() {
             expect(SEMICOLON);
             return node;
         }
-        std::string varType = consume().value;
+        std::string varType = canonicalType(consume().value);
         bool isArray = false;
         if (peek().type == LBRACKET) {
             consume(); expect(RBRACKET);
@@ -341,12 +375,12 @@ Node parseOne() {
             gtokens[pos + 1].type == IDENTIFIER &&
             pos + 2 < (int)gtokens.size() &&
             gtokens[pos + 2].type == LPAREN) {
-            node.varType = consume().value;
+            node.varType = canonicalType(consume().value);
         }
         node.varName = consume().value;
         expect(LPAREN);
         while (peek().type != RPAREN && peek().type != END) {
-            std::string ptype = consume().value;
+            std::string ptype = canonicalType(consume().value);
             std::string pname = consume().value;
             node.params.push_back(ptype + ":" + pname);
             if (peek().type == COMMA) consume();
@@ -550,7 +584,7 @@ Node parseOne() {
         expect(LBRACE);
         while (peek().type != RBRACE && peek().type != END) {
             Node field; field.type = NODE_VAR_DECL;
-            field.varType = consume().value;
+            field.varType = canonicalType(consume().value);
             field.varName = consume().value;
             expect(EQUALS);
             field.left = new Node(parseExpr());

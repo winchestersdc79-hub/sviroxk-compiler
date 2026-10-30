@@ -6,5 +6,5 @@ OUT="${1:-hello.svx}"
 BASE=$(basename "$OUT" .svx)
 ./sviroxk "$OUT" > "$BASE.ll"
 llc "$BASE.ll" -o "$BASE.s"
-clang "$BASE.s" -o "$BASE" -lm
+clang -no-pie "$BASE.s" -o "$BASE" -lm
 ./"$BASE"

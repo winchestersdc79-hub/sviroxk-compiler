@@ -19,9 +19,16 @@ std::vector<Token> tokenize(const std::string& code) {
             i++;
             continue;
         }
-        if (isspace(code[i])) {
+        if (isspace(static_cast<unsigned char>(code[i]))) {
             column++;
             i++;
+            continue;
+        }
+        if (code[i] == '/' && i + 1 < (int)code.size() && code[i + 1] == '/') {
+            while (i < (int)code.size() && code[i] != '\n') {
+                ++i;
+                ++column;
+            }
             continue;
         }
 
@@ -35,17 +42,27 @@ std::vector<Token> tokenize(const std::string& code) {
                 word += code[i++];
                 column++;
             }
-            if      (word == "svi")  add(SVI,  word, tokLine, tokCol);
+            if      (word == "let")  add(LET,  word, tokLine, tokCol);
+            else if (word == "svi")  add(SVI,  word, tokLine, tokCol);
             else if (word == "lor")  add(LOR,  word, tokLine, tokCol);
+            else if (word == "int")  add(ROX,  word, tokLine, tokCol);
+            else if (word == "float") add(DOR,  word, tokLine, tokCol);
+            else if (word == "string") add(COS, word, tokLine, tokCol);
+            else if (word == "bool") add(BUE,  word, tokLine, tokCol);
             else if (word == "rox")  add(ROX,  word, tokLine, tokCol);
             else if (word == "dor")  add(DOR,  word, tokLine, tokCol);
             else if (word == "cos")  add(COS,  word, tokLine, tokCol);
             else if (word == "bue")  add(BUE,  word, tokLine, tokCol);
+            else if (word == "if")   add(ELES, word, tokLine, tokCol);
+            else if (word == "else") add(SELE, word, tokLine, tokCol);
             else if (word == "eles") add(ELES, word, tokLine, tokCol);
             else if (word == "sele") add(SELE, word, tokLine, tokCol);
             else if (word == "cert") add(CERT, word, tokLine, tokCol);
             else if (word == "ceh")  add(CEH,  word, tokLine, tokCol);
             else if (word == "usy")  add(USY,  word, tokLine, tokCol);
+            else if (word == "fn")   add(FUCN, word, tokLine, tokCol);
+            else if (word == "return") add(REV, word, tokLine, tokCol);
+            else if (word == "print") add(SLOV, word, tokLine, tokCol);
             else if (word == "fucn") add(FUCN, word, tokLine, tokCol);
             else if (word == "rev")  add(REV,  word, tokLine, tokCol);
             else if (word == "cop")  add(COP,  word, tokLine, tokCol);
@@ -155,6 +172,7 @@ std::vector<Token> tokenize(const std::string& code) {
             case '[': add(LBRACKET, "[", tokLine, tokCol); break;
             case ']': add(RBRACKET, "]", tokLine, tokCol); break;
             case '.': add(DOT, ".", tokLine, tokCol); break;
+            case ':': add(COLON, ":", tokLine, tokCol); break;
             default:
                 std::cerr << "Ошибка " << tokLine << ":" << tokCol
                           << " неизвестный символ: " << c << std::endl;

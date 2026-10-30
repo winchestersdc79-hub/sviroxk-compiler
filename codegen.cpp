@@ -9,6 +9,10 @@ llvm::Value* CodeGen::getStringPtr(const std::string& str) {
 }
 
 llvm::Type* CodeGen::svType(const std::string& name) {
+    if (name == "int") return builder.getInt32Ty();
+    if (name == "float") return builder.getDoubleTy();
+    if (name == "string") return builder.getPtrTy();
+    if (name == "bool") return builder.getInt32Ty();
     if (name == "ptr" || name == "file" || name == "cos")
         return builder.getPtrTy();
     if (name == "dor" || name == "udor")
@@ -705,11 +709,11 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateCondBr(cond, thenBlock, elseBlock);
         builder.SetInsertPoint(thenBlock);
         for (const Node& n : node.children) genNode(n);
-        if (!builder.GetInsertBlock()->getTerminator())
+        if (!builder.GetInsertBlock()->hasTerminator())
             builder.CreateBr(mergeBlock);
         builder.SetInsertPoint(elseBlock);
         for (const Node& n : node.elseChildren) genNode(n);
-        if (!builder.GetInsertBlock()->getTerminator())
+        if (!builder.GetInsertBlock()->hasTerminator())
             builder.CreateBr(mergeBlock);
         builder.SetInsertPoint(mergeBlock);
     }
@@ -736,7 +740,7 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateCondBr(cond, bodyBlock, afterBlock);
         builder.SetInsertPoint(bodyBlock);
         for (const Node& n : node.children) genNode(n);
-        if (!builder.GetInsertBlock()->getTerminator()) {
+        if (!builder.GetInsertBlock()->hasTerminator()) {
             llvm::Value* next = builder.CreateAdd(cur, builder.getInt32(1));
             builder.CreateStore(next, i);
             builder.CreateBr(loopBlock);
@@ -765,7 +769,7 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateCondBr(cond, bodyBlock, afterBlock);
         builder.SetInsertPoint(bodyBlock);
         for (const Node& n : node.children) genNode(n);
-        if (!builder.GetInsertBlock()->getTerminator())
+        if (!builder.GetInsertBlock()->hasTerminator())
             builder.CreateBr(condBlock);
         builder.SetInsertPoint(afterBlock);
         breakBlock = savedBreak;

@@ -1,0 +1,14 @@
+// Short, readable English-keyword syntax
+fn add(int left, int right) {
+    return left + right;
+}
+
+let answer: int = add(20, 22);
+print("Modern syntax:");
+print(answer);
+
+if (answer == 42) {
+    print("The language works.");
+} else {
+    print("Unexpected result.");
+}

@@ -1,1 +1,4 @@
-slov("привет мир");
+print("Привет, мир!");
+
+let answer: int = 42;
+print(answer);
