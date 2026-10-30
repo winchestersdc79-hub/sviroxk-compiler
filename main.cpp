@@ -1,9 +1,72 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <filesystem>
+#include <set>
+#include <cstdlib>
 #include "lexer.h"
 #include "parser.h"
 #include "codegen.h"
+
+namespace fs = std::filesystem;
+
+static void appendModuleTokens(const fs::path& sourcePath,
+                               std::vector<Token>& output,
+                               std::set<fs::path>& active,
+                               std::set<fs::path>& loaded) {
+    std::error_code ec;
+    fs::path canonicalPath = fs::weakly_canonical(sourcePath, ec);
+    if (ec) {
+        std::cerr << "Ошибка: не удалось разрешить путь модуля: "
+                  << sourcePath.string() << std::endl;
+        std::exit(1);
+    }
+
+    if (active.count(canonicalPath)) {
+        std::cerr << "Ошибка: обнаружен циклический импорт: "
+                  << canonicalPath.string() << std::endl;
+        std::exit(1);
+    }
+    if (loaded.count(canonicalPath)) return;
+
+    std::ifstream file(canonicalPath);
+    if (!file.is_open()) {
+        std::cerr << "Ошибка: не удалось открыть модуль: "
+                  << canonicalPath.string() << std::endl;
+        std::exit(1);
+    }
+
+    std::string code((std::istreambuf_iterator<char>(file)),
+                     std::istreambuf_iterator<char>());
+    active.insert(canonicalPath);
+    std::vector<Token> tokens = tokenize(code);
+
+    for (size_t i = 0; i < tokens.size();) {
+        if (tokens[i].type != IMP) {
+            if (tokens[i].type == END) break;
+            output.push_back(tokens[i++]);
+            continue;
+        }
+
+        Token importToken = tokens[i++];
+        if (i >= tokens.size() || tokens[i].type != STRING) {
+            std::cerr << "Ошибка " << importToken.line << ':' << importToken.column
+                      << ": после 'imp' ожидался путь в кавычках" << std::endl;
+            std::exit(1);
+        }
+        fs::path importPath = canonicalPath.parent_path() / tokens[i++].value;
+        if (i >= tokens.size() || tokens[i].type != SEMICOLON) {
+            std::cerr << "Ошибка " << importToken.line << ':' << importToken.column
+                      << ": после пути импорта ожидалась ';'" << std::endl;
+            std::exit(1);
+        }
+        ++i;
+        appendModuleTokens(importPath, output, active, loaded);
+    }
+
+    active.erase(canonicalPath);
+    loaded.insert(canonicalPath);
+}
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
@@ -11,37 +74,11 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    std::ifstream file(argv[1]);
-    if (!file.is_open()) {
-        std::cerr << "Файл не найден: " << argv[1] << std::endl;
-        return 1;
-    }
-    std::string code((std::istreambuf_iterator<char>(file)),
-                      std::istreambuf_iterator<char>());
-    file.close();
-
-    std::vector<Token> tokens = tokenize(code);
-
-    // обрабатываем импорты
     std::vector<Token> allTokens;
-    for (int i = 0; i < (int)tokens.size(); i++) {
-        if (tokens[i].type == IMP && i+1 < (int)tokens.size()) {
-            std::string importFile = tokens[i+1].value;
-            std::ifstream impFile(importFile);
-            if (impFile.is_open()) {
-                std::string impCode((std::istreambuf_iterator<char>(impFile)),
-                    std::istreambuf_iterator<char>());
-                impFile.close();
-                std::vector<Token> impTokens = tokenize(impCode);
-                impTokens.pop_back(); // убираем END
-                for (auto& t : impTokens) allTokens.push_back(t);
-            }
-            while (i < (int)tokens.size() && tokens[i].type != SEMICOLON) i++;
-            if (i < (int)tokens.size() && tokens[i].type == SEMICOLON) i++;
-        } else {
-            allTokens.push_back(tokens[i]);
-        }
-    }
+    std::set<fs::path> activeImports;
+    std::set<fs::path> loadedImports;
+    appendModuleTokens(fs::absolute(argv[1]), allTokens, activeImports, loadedImports);
+    allTokens.push_back({END, "", 1, 1});
 
     Node node = parse(allTokens);
 
