@@ -299,7 +299,21 @@ Node parseAdd() {
 }
 
 Node parseExpr() {
-    return parseAdd();
+    Node left = parseAdd();
+    if (peek().type == GT || peek().type == LT ||
+        peek().type == EQ || peek().type == NEQ) {
+        Token op = consume();
+        Node right = parseAdd();
+        Node comparison;
+        comparison.type = NODE_BINOP;
+        comparison.line = op.line;
+        comparison.column = op.column;
+        comparison.op = op.value;
+        comparison.left = new Node(left);
+        comparison.right = new Node(right);
+        return comparison;
+    }
+    return left;
 }
 
 Node parseCond() {

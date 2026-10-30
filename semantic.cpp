@@ -271,7 +271,7 @@ private:
             return "file";
         case NODE_FILE_READ:
             if (!lookup(node.varName)) error(node, "неизвестный файл '" + node.varName + "'");
-            return "cos";
+            return "str";
         case NODE_BINOP:
             return binary(node);
         case NODE_FUNC_CALL:
