@@ -33,7 +33,7 @@ sources=(
     "examples/remainder.svx"
     "examples/comparisons.svx"
     "examples/scientific.svx"
-    "examples/stdlib_core.svx"
+    "examples/stdlib_math.svx"
 )
 
 for source in "${sources[@]}"; do
@@ -124,10 +124,10 @@ for source in "${sources[@]}"; do
             cat "$work/output.txt" >&2
             exit 1
         fi
-    elif [[ "$source" == "examples/stdlib_core.svx" ]]; then
+    elif [[ "$source" == "examples/stdlib_math.svx" ]]; then
         expected=$'17\n12\n20\n1'
         if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
-            echo "FAIL: stdlib core helper mismatch" >&2
+            echo "FAIL: math library function mismatch" >&2
             cat "$work/output.txt" >&2
             exit 1
         fi
