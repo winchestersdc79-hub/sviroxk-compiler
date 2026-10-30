@@ -1,0 +1,4 @@
+u8 packet = 200;
+i16 signed_count = -20;
+print(packet + 1);
+print(signed_count + 1);

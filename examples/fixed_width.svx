@@ -1,0 +1,39 @@
+// Ordinary types and exact-width aliases share their storage types.
+int ordinary = 123;
+i32 exact = 456;
+byte packet = 255;
+u8 same_packet = 200;
+short small = -120;
+i8 same_small = -100;
+i32 short_sum = small + same_small;
+u16 unsigned_short = 50000;
+u16 next_unsigned_short = 1000;
+u32 promoted_unsigned = unsigned_short + next_unsigned_short;
+i32 promoted_signed = small + same_small;
+i8 low_edge = -128;
+i8 high_edge = 127;
+u8 low_unsigned = 0;
+u8 high_unsigned = 255;
+i16 low_i16 = -32768;
+i16 high_i16 = 32767;
+float ratio = 1.5;
+f32 same_ratio = 2.5;
+double precise = 3.25;
+f64 same_precise = 4.5;
+long wide = 100000;
+i64 same_wide = 200000;
+
+print(ordinary + exact);
+print(packet + same_packet);
+print(short_sum);
+print(promoted_unsigned);
+print(promoted_signed);
+print(packet / same_packet);
+if (same_packet > packet) {
+    print(1);
+} else {
+    print(0);
+}
+print(ratio + same_ratio);
+print(precise + same_precise);
+print(wide + same_wide);

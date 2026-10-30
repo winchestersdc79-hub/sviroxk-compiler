@@ -27,6 +27,9 @@ sources=(
     "examples/typed.svx"
     "examples/void.svx"
     "examples/returns.svx"
+    "examples/fixed_width.svx"
+    "examples/fixed_width_args.svx"
+    "examples/signedness.svx"
 )
 
 for source in "${sources[@]}"; do
@@ -47,6 +50,14 @@ for source in "${sources[@]}"; do
         cat "$work/compiler.err" >&2
         exit 1
     fi
+    if [[ "$source" == "examples/fixed_width.svx" ]]; then
+        for ir_type in 'alloca i8' 'alloca i16' 'alloca i32' 'alloca i64' 'alloca float' 'alloca double'; do
+            if ! grep -Fq "$ir_type" "$work/module.ll"; then
+                echo "FAIL: expected LLVM storage width missing: $ir_type" >&2
+                exit 1
+            fi
+        done
+    fi
     if ! llvm-as "$work/module.ll" -o "$work/module.bc" 2>"$work/llvm.err"; then
         echo "FAIL: invalid LLVM IR from $source" >&2
         cat "$work/llvm.err" >&2
@@ -66,6 +77,28 @@ for source in "${sources[@]}"; do
         echo "FAIL: program failed or exceeded 10s for $source" >&2
         cat "$work/runtime.err" >&2
         exit 1
+    fi
+    if [[ "$source" == "examples/fixed_width.svx" ]]; then
+        expected=$'579\n455\n-220\n51000\n-220\n1\n0\n4.000000\n7.750000\n300000'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: fixed-width arithmetic/output mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/fixed_width_args.svx" ]]; then
+        expected=$'255\n-120\n256'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: fixed-width function argument/return mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/signedness.svx" ]]; then
+        expected=$'201\n-19'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: narrow signedness promotion mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
     fi
     cat "$work/output.txt"
 done
@@ -111,6 +144,24 @@ expect_compile_error "missing-return-else" 'fn choose(bool flag) { if (flag) { r
 expect_compile_error "unknown-function-argument" 'fn add(int value) { return value; } let result: int = add(missing);'
 expect_compile_error "invalid-arithmetic" 'let result: int = "text" + 1;'
 expect_compile_error "wrong-assignment-type" 'let result: int = "text";'
+expect_compile_error "i8-overflow" 'i8 value = 128;'
+expect_compile_error "u8-overflow" 'u8 value = 256;'
+expect_compile_error "i16-overflow" 'i16 value = 32768;'
+expect_compile_error "i8-underflow" 'i8 value = -129;'
+expect_compile_error "u8-negative" 'u8 value = -1;'
+expect_compile_error "byte-overflow" 'byte value = 256;'
+expect_compile_error "int-alias-overflow" 'int value = 2147483648;'
+expect_compile_error "double-overflow" 'double value = 1e9999;'
+expect_compile_error "u64-overflow" 'u64 value = 18446744073709551616;'
+expect_compile_error "u32-overflow" 'u32 value = 4294967296;'
+expect_compile_error "int-overflow" 'int value = 2147483648;'
+expect_compile_error "long-overflow" 'long value = 9223372036854775808;'
+expect_compile_error "short-overflow" 'short value = 32768;'
+expect_compile_error "f32-overflow" 'f32 value = 1e999;'
+expect_compile_error "exact-array-not-yet-supported" 'i16[] values = [1, 2];'
+expect_compile_error "unsigned-mixed-sign" 'u32 positive = 1; i32 signed = -1; let result: int = positive + signed;'
+expect_compile_error "unsigned-width-mix" 'u64 large = 2; i64 signed = -1; let result: i64 = large + signed;'
+expect_compile_error "unknown-type" 'mystery value = 1;'
 expect_compile_error "duplicate-variable" 'let result: int = 1; let result: int = 2;'
 expect_compile_error "break-outside-loop" 'brk;'
 

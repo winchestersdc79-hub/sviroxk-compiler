@@ -1,0 +1,14 @@
+fn u8 keep_byte(u8 value) {
+    return value;
+}
+
+fn i16 keep_short(i16 value) {
+    return value;
+}
+
+byte packet = keep_byte(255);
+short small = keep_short(-120);
+int promoted_sum = packet + 1;
+print(packet);
+print(small);
+print(promoted_sum);

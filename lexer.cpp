@@ -52,6 +52,13 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "string") add(COS, word, tokLine, tokCol);
             else if (word == "bool") add(BUE,  word, tokLine, tokCol);
             else if (word == "void") add(VOID_T, word, tokLine, tokCol);
+            else if (word == "i8" || word == "i16" || word == "i32" || word == "i64" ||
+                     word == "u8" || word == "u16" || word == "u32" || word == "u64" ||
+                     word == "f32" || word == "f64") add(FIXED_TYPE, word, tokLine, tokCol);
+            else if (word == "uint" || word == "short" || word == "ushort" ||
+                     word == "long" || word == "ulong" || word == "byte" ||
+                     word == "double" || word == "str" || word == "char")
+                add(IDENTIFIER, word, tokLine, tokCol);
             else if (word == "rox")  add(ROX,  word, tokLine, tokCol);
             else if (word == "dor")  add(DOR,  word, tokLine, tokCol);
             else if (word == "cos")  add(COS,  word, tokLine, tokCol);

@@ -14,6 +14,8 @@ public:
     llvm::IRBuilder<> builder;
     llvm::Module module;
     std::map<std::string, llvm::AllocaInst*> vars;
+    std::map<std::string, bool> unsignedVars;
+    std::map<std::string, unsigned> integerWidths;
     std::map<std::string, llvm::AllocaInst*> arrays;
     std::map<std::string, unsigned> arrayLengths;
     std::map<std::string, llvm::Function*> funcs;
@@ -36,6 +38,8 @@ public:
 
     llvm::Type* svType(const std::string& name);
     llvm::Value* castTo(llvm::Value* val, llvm::Type* ty);
+    bool isUnsignedExpr(const Node& node) const;
+    unsigned integerWidth(const Node& node) const;
     llvm::Value* genExpr(const Node& node);
     void genNode(const Node& node);
     void generate(const Node& program);

@@ -1,7 +1,10 @@
 #include "semantic.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <iostream>
+#include <cmath>
+#include <limits>
 #include <map>
 #include <set>
 #include <sstream>
@@ -77,20 +80,53 @@ private:
     unsigned loopDepth_ = 0;
 
     static std::string normalize(const std::string& type) {
-        if (type == "int") return "rox";
-        if (type == "float") return "dor";
-        if (type == "string") return "cos";
-        if (type == "bool") return "bue";
+        if (type == "int" || type == "i32" || type == "rox") return "i32";
+        if (type == "uint" || type == "u32") return "u32";
+        if (type == "short" || type == "i16") return "i16";
+        if (type == "ushort" || type == "u16") return "u16";
+        if (type == "long" || type == "i64" || type == "rox64") return "i64";
+        if (type == "ulong" || type == "u64") return "u64";
+        if (type == "byte" || type == "u8") return "u8";
+        if (type == "float" || type == "f32" || type == "dor") return "f32";
+        if (type == "double" || type == "f64") return "f64";
+        if (type == "string" || type == "str" || type == "cos") return "str";
+        if (type == "bool" || type == "bue") return "bool";
+        if (type == "chr") return "char";
         return type;
     }
 
     static std::string typeName(const std::string& type) {
-        if (type == "rox") return "int";
-        if (type == "dor") return "float";
-        if (type == "cos") return "string";
-        if (type == "bue") return "bool";
+        if (type == "i32") return "int/i32";
+        if (type == "u32") return "uint/u32";
+        if (type == "i16") return "short/i16";
+        if (type == "u16") return "ushort/u16";
+        if (type == "i64") return "long/i64";
+        if (type == "u64") return "ulong/u64";
+        if (type == "u8") return "byte/u8";
+        if (type == "f32") return "float/f32";
+        if (type == "f64") return "double/f64";
+        if (type == "str") return "str";
         if (type.empty()) return "unknown";
         return type;
+    }
+
+    static bool literalFits(const std::string& type, const std::string& text) {
+        try {
+            if (type == "f32" || type == "f64") {
+                double value = std::stod(text);
+                return type != "f32" || std::isfinite(value) &&
+                    std::fabs(value) <= std::numeric_limits<float>::max();
+            }
+            if (type == "i8") { auto v = std::stoll(text); return v >= -128 && v <= 127; }
+            if (type == "i16") { auto v = std::stoll(text); return v >= -32768 && v <= 32767; }
+            if (type == "i32") { auto v = std::stoll(text); return v >= INT32_MIN && v <= INT32_MAX; }
+            if (type == "i64") { std::stoll(text); return true; }
+            if (type == "u8") { auto v = std::stoull(text); return v <= 255; }
+            if (type == "u16") { auto v = std::stoull(text); return v <= 65535; }
+            if (type == "u32") { auto v = std::stoull(text); return v <= UINT32_MAX; }
+            if (type == "u64") { std::stoull(text); return text.empty() || text[0] != '-'; }
+        } catch (...) { return false; }
+        return false;
     }
 
     void error(const Node& node, const std::string& message) {
@@ -101,17 +137,27 @@ private:
 
     bool knownType(const std::string& raw) const {
         std::string type = normalize(raw);
-        return type == "rox" || type == "dor" || type == "cos" ||
-               type == "bue" || type == "ptr" || type == "file" ||
-               type == "chr" || type == "rox64" || structs_.count(type);
+        return type == "i8" || type == "i16" || type == "i32" || type == "i64" ||
+               type == "u8" || type == "u16" || type == "u32" || type == "u64" ||
+               type == "f32" || type == "f64" || type == "str" || type == "bool" ||
+               type == "char" || type == "ptr" || type == "file" || structs_.count(type);
+    }
+
+    static bool isInteger(const std::string& type) {
+        return type == "i8" || type == "i16" || type == "i32" || type == "i64" ||
+               type == "u8" || type == "u16" || type == "u32" || type == "u64";
     }
 
     bool compatible(const std::string& expectedRaw, const std::string& actualRaw) const {
         std::string expected = normalize(expectedRaw);
         std::string actual = normalize(actualRaw);
-        return expected == actual || expected == "void" && actual == "<void>" ||
-               expected == "dor" && (actual == "rox" || actual == "bue") ||
-               expected == "rox64" && (actual == "rox" || actual == "chr");
+        if (expected == actual ||
+               (expected == "f32" || expected == "f64") &&
+                   (actual == "i8" || actual == "i16" || actual == "i32" || actual == "i64" ||
+                    actual == "u8" || actual == "u16" || actual == "u32" || actual == "u64") ||
+               expected == "i64" && (actual == "i8" || actual == "i16" || actual == "i32") ||
+               expected == "u64" && (actual == "u8" || actual == "u16" || actual == "u32")) return true;
+        return false;
     }
 
     bool declare(const std::string& name, const std::string& type,
@@ -137,9 +183,9 @@ private:
         switch (node.type) {
         case NODE_NUMBER:
             if (!node.varType.empty()) return normalize(node.varType);
-            return node.value.find('.') == std::string::npos ? "rox" : "dor";
+            return node.value.find('.') == std::string::npos ? "i32" : "f64";
         case NODE_STRING:
-            return "cos";
+            return "str";
         case NODE_IDENTIFIER: {
             const Symbol* symbol = lookup(node.value);
             if (!symbol) {
@@ -171,18 +217,18 @@ private:
                 return "<error>";
             }
             std::string indexType = expression(*node.left);
-            if (indexType != "rox" && indexType != "rox64" && indexType != "<error>")
+            if (!isInteger(indexType) && indexType != "<error>")
                 error(*node.left, "индекс массива должен иметь целочисленный тип");
             if (symbol->type.rfind("array<", 0) == 0)
                 return symbol->type.substr(6, symbol->type.size() - 7);
-            if (symbol->type == "ptr") return "rox";
+            if (symbol->type == "ptr") return "i32";
             error(node, "значение '" + node.varName + "' не является массивом");
             return "<error>";
         }
         case NODE_CAST: {
             std::string target = normalize(node.varType);
             std::string source = expression(*node.left);
-            const std::set<std::string> numeric = {"rox", "dor", "rox64", "chr"};
+            const std::set<std::string> numeric = {"i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64"};
             if (!knownType(target))
                 error(node, "неизвестный тип преобразования '" + node.varType + "'");
             else if (!numeric.count(target) || !numeric.count(source))
@@ -208,18 +254,18 @@ private:
                 error(node, "разыменование требует тип ptr, получен '" + typeName(symbol->type) + "'");
                 return "<error>";
             }
-            return "rox";
+            return "i32";
         }
         case NODE_DYN_ARRAY: {
             std::string element = normalize(node.varType);
             if (!knownType(element)) error(node, "неизвестный тип элемента массива '" + node.varType + "'");
             std::string sizeType = expression(*node.left);
-            if (sizeType != "rox" && sizeType != "rox64" && sizeType != "<error>")
+            if (!isInteger(sizeType) && sizeType != "<error>")
                 error(*node.left, "размер массива должен быть целым числом");
             return "array<" + element + ">";
         }
         case NODE_INPUT:
-            return node.varType == "cos" ? "cos" : "rox";
+            return node.varType == "cos" ? "str" : "i32";
         case NODE_FILE_OPEN:
             return "file";
         case NODE_FILE_READ:
@@ -239,25 +285,48 @@ private:
         std::string left = expression(*node.left);
         std::string right = expression(*node.right);
         if (left == "<error>" || right == "<error>") return "<error>";
-        const std::set<std::string> numeric = {"rox", "dor", "rox64", "chr"};
+        if (isInteger(left) && isInteger(right)) {
+            const bool leftUnsigned = left[0] == 'u';
+            const bool rightUnsigned = right[0] == 'u';
+            const bool rightLiteralFitsLeft = node.right->type == NODE_NUMBER &&
+                literalFits(left, node.right->value);
+            const bool leftLiteralFitsRight = node.left->type == NODE_NUMBER &&
+                literalFits(right, node.left->value);
+            if (leftUnsigned != rightUnsigned) {
+                const std::string unsignedType = leftUnsigned ? left : right;
+                const std::string signedType = leftUnsigned ? right : left;
+                const unsigned unsignedBits = static_cast<unsigned>(std::stoi(unsignedType.substr(1)));
+                const unsigned signedBits = static_cast<unsigned>(std::stoi(signedType.substr(1)));
+                if (std::max(unsignedBits, signedBits) < 32) return "i32";
+                if (signedBits > unsignedBits) return signedType;
+                error(node, "нельзя смешивать signed- и unsigned-типы этой ширины без явного преобразования");
+                return "<error>";
+            }
+        }
+        const std::set<std::string> numeric = {"i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64"};
         if (node.op == ">" || node.op == "<") {
             if (!numeric.count(left) || !numeric.count(right))
                 error(node, "оператор '" + node.op + "' принимает только числа");
-            return "bue";
+            return "bool";
         }
         if (node.op == "==" || node.op == "!=") {
             if (!compatible(left, right) && !compatible(right, left))
                 error(node, "нельзя сравнивать значения типов '" + typeName(left) +
                             "' и '" + typeName(right) + "'");
-            return "bue";
+            return "bool";
         }
         if (!numeric.count(left) || !numeric.count(right)) {
             error(node, "арифметический оператор '" + node.op + "' требует числовые операнды");
             return "<error>";
         }
-        if (left == "dor" || right == "dor") return "dor";
-        if (left == "rox64" || right == "rox64") return "rox64";
-        return "rox";
+        if (left == "f64" || right == "f64") return "f64";
+        if (left == "f32" || right == "f32") return "f32";
+        if (left == "u64" || right == "u64") return "u64";
+        if (left == "i64" || right == "i64") return "i64";
+        if (left == "u32" || right == "u32") return "u32";
+        if (left == "i32" || right == "i32") return "i32";
+        if (left[0] == 'u') return "u32";
+        return "i32";
     }
 
     std::string call(const Node& node) {
@@ -276,15 +345,15 @@ private:
             }
             for (const Node& arg : node.args) {
                 std::string type = expression(arg);
-                if (type != "rox" && type != "dor" && type != "rox64" && type != "chr" && type != "cos" && type != "<error>")
+                if (!isInteger(type) && type != "f32" && type != "f64" && type != "char" && type != "str" && type != "<error>")
                     error(arg, "недопустимый тип аргумента функции '" + node.varName + "'");
             }
-            if (node.varName == "ser") return "bue";
-            if (node.varName == "ar" || node.varName == "ran" || node.varName == "abs" || node.varName == "pow") return "rox";
-            if (node.varName == "str" || node.varName == "rep") return "cos";
-            if (node.varName == "sqrt" || node.varName == "flo" || node.varName == "cel" || node.varName == "ron") return "rox";
+            if (node.varName == "ser") return "bool";
+            if (node.varName == "ar" || node.varName == "ran" || node.varName == "abs" || node.varName == "pow") return "i32";
+            if (node.varName == "str" || node.varName == "rep") return "str";
+            if (node.varName == "sqrt" || node.varName == "flo" || node.varName == "cel" || node.varName == "ron") return "i32";
             if (!node.args.empty()) return expression(node.args[0]);
-            return "rox";
+            return "i32";
         }
         auto function = functions_.find(node.varName);
         if (function == functions_.end()) {
@@ -300,8 +369,12 @@ private:
         size_t count = std::min(node.args.size(), function->second.parameters.size());
         for (size_t i = 0; i < node.args.size(); ++i) {
             std::string actual = expression(node.args[i]);
+            const std::string expectedType = i < count
+                ? normalize(function->second.parameters[i]) : std::string();
+            const bool fittingLiteral = i < count && node.args[i].type == NODE_NUMBER &&
+                literalFits(expectedType, node.args[i].value);
             if (i < count && actual != "<error>" &&
-                !compatible(function->second.parameters[i], actual)) {
+                !compatible(function->second.parameters[i], actual) && !fittingLiteral) {
                 error(node.args[i], "аргумент " + std::to_string(i + 1) + " функции '" +
                       node.varName + "': ожидался '" + typeName(function->second.parameters[i]) +
                       "', получен '" + typeName(actual) + "'");
@@ -317,9 +390,16 @@ private:
             if (!fields.insert(field.varName).second)
                 error(field, "повторное объявление поля '" + field.varName + "'");
             std::string actual = expression(*field.left);
-            if (actual != "<error>" && !compatible(field.varType, actual))
-                error(field, "значение по умолчанию поля '" + field.varName + "' имеет тип '" +
-                      typeName(actual) + "', ожидался '" + typeName(normalize(field.varType)) + "'");
+            if (actual != "<error>" && !compatible(field.varType, actual)) {
+                bool fittingLiteral = field.left->type == NODE_NUMBER &&
+                    literalFits(normalize(field.varType), field.left->value);
+                if (!fittingLiteral)
+                    error(field, "значение по умолчанию поля '" + field.varName + "' имеет тип '" +
+                          typeName(actual) + "', ожидался '" + typeName(normalize(field.varType)) + "'");
+            }
+            if (field.left->type == NODE_NUMBER &&
+                !literalFits(normalize(field.varType), field.left->value))
+                error(field, "литерал поля вне диапазона типа '" + typeName(normalize(field.varType)) + "'");
         }
     }
 
@@ -354,21 +434,32 @@ private:
         case NODE_VAR_DECL: {
             if (!knownType(node.varType)) error(node, "неизвестный тип переменной '" + node.varType + "'");
             std::string actual = expression(*node.left);
-            if (actual != "<error>" && !compatible(node.varType, actual))
+            const std::string declaredType = normalize(node.varType);
+            const bool numericLiteral = node.left->type == NODE_NUMBER &&
+                (isInteger(declaredType) || declaredType == "f32" || declaredType == "f64");
+            const bool literalInRange = numericLiteral && literalFits(declaredType, node.left->value);
+            if (numericLiteral && !literalInRange) {
+                error(node, "числовой литерал вне диапазона типа '" + typeName(declaredType) + "'");
+            } else if (actual != "<error>" && !compatible(node.varType, actual) && !literalInRange) {
                 error(node, "переменная '" + node.varName + "' имеет тип '" +
-                      typeName(normalize(node.varType)) + "', но инициализируется значением типа '" +
+                      typeName(declaredType) + "', но инициализируется значением типа '" +
                       typeName(actual) + "'");
+            }
             declare(node.varName, node.varType, node);
             break;
         }
         case NODE_ARRAY_DECL: {
             std::string element = normalize(node.varType);
+            if (element != "i32" && element != "f64" && element != "str" && element != "bool")
+                error(node, "массивы точных типов пока не поддерживаются backend'ом; используйте i32, f64, str или bool");
             if (!knownType(element)) error(node, "неизвестный тип элемента массива '" + element + "'");
             for (const Node& value : node.args) {
                 std::string actual = expression(value);
                 if (actual != "<error>" && !compatible(element, actual))
                     error(value, "элемент массива должен иметь тип '" + typeName(element) + "'");
             }
+            if (element != "i32" && element != "f64" && element != "str" && element != "bool")
+                error(node, "backend пока не поддерживает массивы типа '" + typeName(element) + "'");
             declare(node.varName, "array<" + element + ">", node);
             break;
         }
@@ -396,6 +487,9 @@ private:
                     if (actual != "<error>" && !compatible(field.varType, actual))
                         error(*value, "поле '" + field.varName + "' ожидает тип '" +
                               typeName(normalize(field.varType)) + "', получен '" + typeName(actual) + "'");
+                    if (value->left->type == NODE_NUMBER &&
+                        !literalFits(normalize(field.varType), value->left->value))
+                        error(*value, "литерал поля вне диапазона типа '" + typeName(normalize(field.varType)) + "'");
                 }
                 if (!value && named.count(field.varName)) named.erase(field.varName);
             }
@@ -458,7 +552,11 @@ private:
                 break;
             }
             std::string actual = expression(*node.left);
-            if (actual != "<error>" && !compatible(returnTypes_.back(), actual))
+            bool fittingLiteral = node.left->type == NODE_NUMBER &&
+                literalFits(returnTypes_.back(), node.left->value);
+            if (node.left->type == NODE_NUMBER && !literalFits(returnTypes_.back(), node.left->value))
+                error(node, "числовой литерал возврата вне диапазона типа '" + typeName(returnTypes_.back()) + "'");
+            else if (actual != "<error>" && !compatible(returnTypes_.back(), actual) && !fittingLiteral)
                 error(node, "функция должна вернуть '" + typeName(returnTypes_.back()) +
                       "', получено '" + typeName(actual) + "'");
             break;
@@ -471,7 +569,7 @@ private:
             break;
         case NODE_IF: {
             std::string condition = expression(*node.left);
-            if (condition != "bue" && condition != "rox" && condition != "<error>")
+            if (condition != "bool" && !isInteger(condition) && condition != "<error>")
                 error(*node.left, "условие if должно быть bool или int");
             scopes_.emplace_back();
             for (const Node& child : node.children) checkNode(child);
@@ -483,7 +581,7 @@ private:
         }
         case NODE_LOOP_N: {
             std::string count = expression(*node.left);
-            if (count != "rox" && count != "rox64" && count != "<error>") error(*node.left, "число итераций должно иметь целочисленный тип");
+            if (!isInteger(count) && count != "<error>") error(*node.left, "число итераций должно иметь целочисленный тип");
             ++loopDepth_;
             scopes_.emplace_back();
             for (const Node& child : node.children) checkNode(child);
@@ -493,7 +591,7 @@ private:
         }
         case NODE_LOOP_W: {
             std::string condition = expression(*node.left);
-            if (condition != "bue" && condition != "rox" && condition != "<error>") error(*node.left, "условие цикла должно быть bool или int");
+            if (condition != "bool" && !isInteger(condition) && condition != "<error>") error(*node.left, "условие цикла должно быть bool или int");
             ++loopDepth_;
             scopes_.emplace_back();
             for (const Node& child : node.children) checkNode(child);

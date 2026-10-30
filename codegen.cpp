@@ -1,6 +1,9 @@
 #include "codegen.h"
 #include <llvm/Support/raw_ostream.h>
 #include <iostream>
+#include <cstdint>
+#include <climits>
+#include <cstdlib>
 
 llvm::Value* CodeGen::getStringPtr(const std::string& str) {
     llvm::GlobalVariable* gv = builder.CreateGlobalString(str);
@@ -9,29 +12,38 @@ llvm::Value* CodeGen::getStringPtr(const std::string& str) {
 }
 
 llvm::Type* CodeGen::svType(const std::string& name) {
-    if (name == "int") return builder.getInt32Ty();
-    if (name == "float") return builder.getDoubleTy();
-    if (name == "string") return builder.getPtrTy();
-    if (name == "bool") return builder.getInt32Ty();
+    if (name == "int" || name == "i32" || name == "rox" || name == "uint" || name == "u32") return builder.getInt32Ty();
+    if (name == "short" || name == "i16" || name == "ushort" || name == "u16") return builder.getInt16Ty();
+    if (name == "i8" || name == "u8" || name == "byte" || name == "char" || name == "chr") return builder.getInt8Ty();
+    if (name == "long" || name == "i64" || name == "ulong" || name == "u64" || name == "rox64") return builder.getInt64Ty();
+    if (name == "float" || name == "f32" || name == "dor") return builder.getFloatTy();
+    if (name == "double" || name == "f64") return builder.getDoubleTy();
+    if (name == "str" || name == "string" || name == "cos" || name == "ptr" || name == "file") return builder.getPtrTy();
+    if (name == "bool" || name == "bue") return builder.getInt8Ty();
     if (name == "void") return builder.getVoidTy();
-    if (name == "ptr" || name == "file" || name == "cos")
-        return builder.getPtrTy();
-    if (name == "dor" || name == "udor")
-        return builder.getDoubleTy();
-    if (name == "chr")
-        return builder.getInt8Ty();
-    if (name == "rox64")
-        return builder.getInt64Ty();
-    return builder.getInt32Ty(); // rox, bue
+    return builder.getInt32Ty();
 }
 
 llvm::Value* CodeGen::castTo(llvm::Value* val, llvm::Type* ty) {
     if (!val || !ty) return val;
     if (val->getType() == ty) return val;
-    if (ty->isDoubleTy() && val->getType()->isIntegerTy(1))
+    if (ty->isFloatingPointTy() && val->getType()->isIntegerTy(1))
         return builder.CreateUIToFP(val, ty);
-    if (ty->isDoubleTy() && val->getType()->isIntegerTy())
+    if (ty->isFloatingPointTy() && val->getType()->isIntegerTy())
         return builder.CreateSIToFP(val, ty);
+    if (ty->isFloatTy() && val->getType()->isDoubleTy())
+        return builder.CreateFPTrunc(val, ty);
+    if (ty->isDoubleTy() && val->getType()->isFloatTy())
+        return builder.CreateFPExt(val, ty);
+    if (ty->isIntegerTy() && val->getType()->isIntegerTy() &&
+        ty->getIntegerBitWidth() > val->getType()->getIntegerBitWidth()) {
+        if (val->getType()->isIntegerTy(1) || ty->getIntegerBitWidth() == 1)
+            return builder.CreateZExt(val, ty);
+        return builder.CreateSExt(val, ty);
+    }
+    if (ty->isIntegerTy() && val->getType()->isIntegerTy() &&
+        ty->getIntegerBitWidth() < val->getType()->getIntegerBitWidth())
+        return builder.CreateTrunc(val, ty);
     if (ty->isIntegerTy(32) && val->getType()->isIntegerTy(1))
         return builder.CreateZExt(val, ty);
     if (ty->isIntegerTy(32) && val->getType()->isDoubleTy())
@@ -48,14 +60,50 @@ llvm::Value* CodeGen::castTo(llvm::Value* val, llvm::Type* ty) {
     return val;
 }
 
+unsigned CodeGen::integerWidth(const Node& node) const {
+    if (node.type == NODE_IDENTIFIER) {
+        auto found = integerWidths.find(node.value);
+        return found == integerWidths.end() ? 32 : found->second;
+    }
+    if (node.type == NODE_NUMBER) return 32;
+    if (node.type == NODE_BINOP && node.left && node.right)
+        return std::max(integerWidth(*node.left), integerWidth(*node.right));
+    return 32;
+}
+
+bool CodeGen::isUnsignedExpr(const Node& node) const {
+    if (node.type == NODE_NUMBER) return false;
+    if (node.type == NODE_IDENTIFIER) {
+        auto found = unsignedVars.find(node.value);
+        return found != unsignedVars.end() && found->second;
+    }
+    if (node.type == NODE_BINOP && node.left && node.right) {
+        if (node.op == ">" || node.op == "<" || node.op == "==" || node.op == "!=")
+            return isUnsignedExpr(*node.left);
+        return isUnsignedExpr(*node.left) || isUnsignedExpr(*node.right);
+    }
+    return false;
+}
+
 llvm::Value* CodeGen::genExpr(const Node& node) {
     if (node.type == NODE_NUMBER) {
         if (node.value.find('.') != std::string::npos)
             return llvm::ConstantFP::get(builder.getDoubleTy(), std::stod(node.value));
+        if (!node.value.empty() && node.value[0] == '-') {
+            const long long signedValue = std::stoll(node.value);
+            if (signedValue >= INT32_MIN && signedValue <= INT32_MAX)
+                return builder.getInt32(static_cast<int32_t>(signedValue));
+            return builder.getInt64(signedValue);
+        }
         try {
-            return builder.getInt32(std::stoi(node.value));
-        } catch (...) {
-            return builder.getInt64(std::stoll(node.value));
+            const unsigned long long value = std::stoull(node.value);
+            if (value <= static_cast<unsigned long long>(INT32_MAX))
+                return builder.getInt32(static_cast<uint32_t>(value));
+            return llvm::ConstantInt::get(builder.getInt64Ty(), value);
+        } catch (const std::exception&) {
+            std::cerr << "Ошибка: целочисленный литерал вне диапазона i64/u64: "
+                      << node.value << std::endl;
+            std::exit(1);
         }
     }
     if (node.type == NODE_STRING)
@@ -67,11 +115,7 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             llvm::Type* ty = alloca->getAllocatedType();
             if (ty->isPointerTy())
                 return builder.CreateLoad(builder.getPtrTy(), alloca);
-            if (ty->isDoubleTy())
-                return builder.CreateLoad(builder.getDoubleTy(), alloca);
-            if (ty->isIntegerTy(64))
-                return builder.CreateLoad(builder.getInt64Ty(), alloca);
-            return builder.CreateLoad(builder.getInt32Ty(), alloca);
+            return builder.CreateLoad(ty, alloca);
         }
         return builder.getInt32(0);
     }
@@ -81,13 +125,7 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             llvm::Type* ty = alloca->getAllocatedType();
             if (ty->isPointerTy())
                 return builder.CreateLoad(builder.getPtrTy(), alloca);
-            if (ty->isDoubleTy())
-                return builder.CreateLoad(builder.getDoubleTy(), alloca);
-            if (ty->isIntegerTy(8))
-                return builder.CreateLoad(builder.getInt8Ty(), alloca);
-            if (ty->isIntegerTy(64))
-                return builder.CreateLoad(builder.getInt64Ty(), alloca);
-            return builder.CreateLoad(builder.getInt32Ty(), alloca);
+            return builder.CreateLoad(ty, alloca);
         }
         return builder.getInt32(0);
     }
@@ -243,12 +281,12 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
     if (node.type == NODE_BINOP) {
         llvm::Value* L = genExpr(*node.left);
         llvm::Value* R = genExpr(*node.right);
-        bool isFloat = L->getType()->isDoubleTy() || R->getType()->isDoubleTy();
+        bool isFloat = L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy();
         if (isFloat) {
-            if (L->getType()->isIntegerTy())
-                L = builder.CreateSIToFP(L, builder.getDoubleTy());
-            if (R->getType()->isIntegerTy())
-                R = builder.CreateSIToFP(R, builder.getDoubleTy());
+            llvm::Type* common = L->getType()->isDoubleTy() || R->getType()->isDoubleTy()
+                ? builder.getDoubleTy() : builder.getFloatTy();
+            if (L->getType() != common) L = castTo(L, common);
+            if (R->getType() != common) R = castTo(R, common);
             if (node.op == "+") return builder.CreateFAdd(L, R);
             if (node.op == "-") return builder.CreateFSub(L, R);
             if (node.op == "*") return builder.CreateFMul(L, R);
@@ -258,12 +296,29 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             if (node.op == "==") return builder.CreateFCmpOEQ(L, R);
             if (node.op == "!=") return builder.CreateFCmpONE(L, R);
         }
+        const unsigned resultWidth = std::max(integerWidth(*node.left), integerWidth(*node.right));
+        const unsigned promotedWidth = resultWidth < 32 ? 32 : resultWidth;
+        llvm::Type* common = builder.getIntNTy(promotedWidth);
+        if (L->getType()->getIntegerBitWidth() > common->getIntegerBitWidth()) common = L->getType();
+        if (R->getType()->getIntegerBitWidth() > common->getIntegerBitWidth()) common = R->getType();
+        auto extendToCommon = [&](llvm::Value* value, const Node& expression) -> llvm::Value* {
+            if (value->getType() == common || !value->getType()->isIntegerTy()) return value;
+            return isUnsignedExpr(expression) ? builder.CreateZExt(value, common)
+                                              : builder.CreateSExt(value, common);
+        };
+        if (L->getType() != common) L = extendToCommon(L, *node.left);
+        if (R->getType() != common) R = extendToCommon(R, *node.right);
         if (node.op == "+") return builder.CreateAdd(L, R);
         if (node.op == "-") return builder.CreateSub(L, R);
         if (node.op == "*") return builder.CreateMul(L, R);
-        if (node.op == "/") return builder.CreateSDiv(L, R);
-        if (node.op == ">") return builder.CreateICmpSGT(L, R);
-        if (node.op == "<") return builder.CreateICmpSLT(L, R);
+        if (node.op == "/") return isUnsignedExpr(*node.left)
+            ? builder.CreateUDiv(L, R) : builder.CreateSDiv(L, R);
+        if (node.op == "%") return isUnsignedExpr(*node.left)
+            ? builder.CreateURem(L, R) : builder.CreateSRem(L, R);
+        if (node.op == ">") return isUnsignedExpr(*node.left)
+            ? builder.CreateICmpUGT(L, R) : builder.CreateICmpSGT(L, R);
+        if (node.op == "<") return isUnsignedExpr(*node.left)
+            ? builder.CreateICmpULT(L, R) : builder.CreateICmpSLT(L, R);
         if (node.op == "==") return builder.CreateICmpEQ(L, R);
         if (node.op == "!=") return builder.CreateICmpNE(L, R);
     }
@@ -445,11 +500,20 @@ void CodeGen::genNode(const Node& node) {
             if (val->getType()->isPointerTy()) {
                 // строка — выводим через puts
                 builder.CreateCall(putsFunc, {val});
+            } else if (val->getType()->isFloatTy()) {
+                llvm::Value* promoted = builder.CreateFPExt(val, builder.getDoubleTy());
+                llvm::Value* fmt = getStringPtr("%f\n");
+                builder.CreateCall(printfFunc, {fmt, promoted});
             } else if (val->getType()->isDoubleTy()) {
                 llvm::Value* fmt = getStringPtr("%f\n");
                 builder.CreateCall(printfFunc, {fmt, val});
-            } else if (val->getType()->isIntegerTy(8)) {
-                llvm::Value* fmt = getStringPtr("%c\n");
+            } else if (val->getType()->isIntegerTy() &&
+                       val->getType()->getIntegerBitWidth() < 32) {
+                const bool isUnsigned = node.left->type == NODE_IDENTIFIER &&
+                    unsignedVars.count(node.left->value) && unsignedVars[node.left->value];
+                val = isUnsigned ? builder.CreateZExt(val, builder.getInt32Ty())
+                                 : builder.CreateSExt(val, builder.getInt32Ty());
+                llvm::Value* fmt = getStringPtr("%d\n");
                 builder.CreateCall(printfFunc, {fmt, val});
             } else if (val->getType()->isIntegerTy(64)) {
                 llvm::Value* fmt = getStringPtr("%lld\n");
@@ -471,6 +535,9 @@ void CodeGen::genNode(const Node& node) {
         val = castTo(val, ty);
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
+        unsignedVars[node.varName] = node.varType == "u8" || node.varType == "u16" ||
+            node.varType == "u32" || node.varType == "u64";
+        integerWidths[node.varName] = ty->isIntegerTy() ? ty->getIntegerBitWidth() : 32;
     }
     else if (node.type == NODE_ASSIGN) {
         llvm::AllocaInst* alloca = vars[node.varName];
@@ -599,6 +666,8 @@ void CodeGen::genNode(const Node& node) {
             llvm::BasicBlock::Create(context, "entry", func);
         llvm::BasicBlock* savedBlock = builder.GetInsertBlock();
         auto savedVars = vars;
+        auto savedUnsignedVars = unsignedVars;
+        auto savedIntegerWidths = integerWidths;
         auto savedArrays = arrays;
         auto savedArrayLengths = arrayLengths;
         builder.SetInsertPoint(block);
@@ -614,6 +683,9 @@ void CodeGen::genNode(const Node& node) {
                 builder.CreateAlloca(ty, nullptr, pname);
             builder.CreateStore(&arg, alloca);
             vars[pname] = alloca;
+            unsignedVars[pname] = ptype == "u8" || ptype == "u16" ||
+                ptype == "u32" || ptype == "u64";
+            integerWidths[pname] = ty->isIntegerTy() ? ty->getIntegerBitWidth() : 32;
         }
         bool hasRet = false;
         for (const Node& n : node.children) {
@@ -632,6 +704,8 @@ void CodeGen::genNode(const Node& node) {
         }
         builder.SetInsertPoint(savedBlock);
         vars = savedVars;
+        unsignedVars = savedUnsignedVars;
+        integerWidths = savedIntegerWidths;
         arrays = savedArrays;
         arrayLengths = savedArrayLengths;
         funcs[node.varName] = func;
@@ -701,8 +775,8 @@ void CodeGen::genNode(const Node& node) {
     }
     else if (node.type == NODE_IF) {
         llvm::Value* cond = genExpr(*node.left);
-        if (cond->getType() == builder.getInt32Ty())
-            cond = builder.CreateICmpNE(cond, builder.getInt32(0));
+        if (cond->getType()->isIntegerTy() && !cond->getType()->isIntegerTy(1))
+            cond = builder.CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0));
         llvm::Function* func = builder.GetInsertBlock()->getParent();
         llvm::BasicBlock* thenBlock =
             llvm::BasicBlock::Create(context, "then", func);
@@ -768,8 +842,8 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateBr(condBlock);
         builder.SetInsertPoint(condBlock);
         llvm::Value* cond = genExpr(*node.left);
-        if (cond->getType() == builder.getInt32Ty())
-            cond = builder.CreateICmpNE(cond, builder.getInt32(0));
+        if (cond->getType()->isIntegerTy() && !cond->getType()->isIntegerTy(1))
+            cond = builder.CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0));
         builder.CreateCondBr(cond, bodyBlock, afterBlock);
         builder.SetInsertPoint(bodyBlock);
         for (const Node& n : node.children) genNode(n);

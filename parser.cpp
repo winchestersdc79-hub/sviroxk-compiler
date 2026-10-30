@@ -42,16 +42,35 @@ static Token expect(TokenType type) {
     return expect(type, "другой токен");
 }
 
+static bool isTypeName(const std::string& type) {
+    return type == "rox" || type == "dor" || type == "cos" || type == "bue" ||
+           type == "int" || type == "float" || type == "string" || type == "bool" ||
+           type == "uint" || type == "short" || type == "ushort" || type == "long" ||
+           type == "ulong" || type == "byte" || type == "double" || type == "char" ||
+           type == "i8" || type == "i16" || type == "i32" || type == "i64" ||
+           type == "u8" || type == "u16" || type == "u32" || type == "u64" ||
+           type == "f32" || type == "f64" || type == "ptr" || type == "file" ||
+           type == "chr" || type == "rox64";
+}
+
 static bool isTypeToken(TokenType t) {
     return t == ROX || t == DOR || t == COS || t == BUE || t == PTR ||
-           t == FILE_T || t == CHR || t == ROX64;
+           t == FILE_T || t == CHR || t == ROX64 || t == FIXED_TYPE || t == IDENTIFIER;
 }
 
 static std::string canonicalType(const std::string& type) {
-    if (type == "int") return "rox";
-    if (type == "float") return "dor";
-    if (type == "string") return "cos";
-    if (type == "bool") return "bue";
+    if (type == "int" || type == "i32" || type == "rox") return "i32";
+    if (type == "uint" || type == "u32") return "u32";
+    if (type == "short" || type == "i16") return "i16";
+    if (type == "ushort" || type == "u16") return "u16";
+    if (type == "long" || type == "i64" || type == "rox64") return "i64";
+    if (type == "ulong" || type == "u64") return "u64";
+    if (type == "byte" || type == "u8") return "u8";
+    if (type == "char" || type == "chr") return "char";
+    if (type == "float" || type == "f32" || type == "dor") return "f32";
+    if (type == "double" || type == "f64") return "f64";
+    if (type == "string" || type == "str" || type == "cos") return "str";
+    if (type == "bool" || type == "bue") return "bool";
     return type;
 }
 
@@ -178,7 +197,7 @@ Node parsePrimary() {
     if (t.type == NUMBER) {
         left.type = NODE_NUMBER;
         left.value = t.value;
-        left.varType = t.value.find('.') == std::string::npos ? "rox" : "dor";
+        left.varType = t.value.find('.') == std::string::npos ? "i32" : "f64";
     }
     else if (t.type == STRING) { left.type = NODE_STRING; left.value = t.value; left.varType = "cos"; }
     else if (t.type == COP) {
@@ -320,7 +339,10 @@ Node parseOne() {
         node.column = declarationToken.column;
         node.varName = expect(IDENTIFIER).value;
         expect(COLON);
-        node.varType = canonicalType(consume().value);
+        Token typeToken = consume();
+        if (!isTypeName(typeToken.value))
+            failAt(typeToken, "неизвестный тип '" + typeToken.value + "'");
+        node.varType = canonicalType(typeToken.value);
         expect(EQUALS);
         node.left = new Node(parseExpr());
         expect(SEMICOLON);
@@ -361,7 +383,10 @@ Node parseOne() {
             expect(SEMICOLON);
             return node;
         }
-        std::string varType = canonicalType(consume().value);
+        Token declaredType = consume();
+        if (!isTypeName(declaredType.value))
+            failAt(declaredType, "неизвестный тип '" + declaredType.value + "'");
+        std::string varType = canonicalType(declaredType.value);
         bool isArray = false;
         if (peek().type == LBRACKET) {
             consume(); expect(RBRACKET);
@@ -413,14 +438,17 @@ Node parseOne() {
         Node node; node.type = NODE_FUNC_DEF;
         node.line = peek().line;
         node.column = peek().column;
-        Token functionKeyword = consume();
+        consume();
         node.varType = "rox";
         if (peek().type == VOID_T) {
             consume();
             node.varType = "void";
         } else if (isTypeToken(peek().type) && peek(1).type == IDENTIFIER &&
                    peek(2).type == LPAREN) {
-            node.varType = canonicalType(consume().value);
+            Token returnType = consume();
+            if (!isTypeName(returnType.value))
+                failAt(returnType, "неизвестный тип результата '" + returnType.value + "'");
+            node.varType = canonicalType(returnType.value);
         }
         node.varName = consume().value;
         expect(LPAREN);
@@ -428,6 +456,8 @@ Node parseOne() {
             Token typeToken = consume();
             if (!isTypeToken(typeToken.type))
                 failAt(typeToken, "ожидался тип параметра функции");
+            if (!isTypeName(typeToken.value))
+                failAt(typeToken, "неизвестный тип параметра '" + typeToken.value + "'");
             std::string ptype = canonicalType(typeToken.value);
             std::string pname = expect(IDENTIFIER, "имя параметра").value;
             node.params.push_back(ptype + ":" + pname);
@@ -596,6 +626,21 @@ Node parseOne() {
         expect(SEMICOLON);
         return node;
     }
+    // Удобное объявление с явным типом: int count = 1;
+    if (isTypeName(peek().value) &&
+        (peek().type != IDENTIFIER || peek(1).type == IDENTIFIER)) {
+        Token typeToken = consume();
+        if (!isTypeName(typeToken.value))
+            failAt(typeToken, "неизвестный тип '" + typeToken.value + "'");
+        Node node; node.type = NODE_VAR_DECL;
+        node.line = typeToken.line; node.column = typeToken.column;
+        node.varType = canonicalType(typeToken.value);
+        node.varName = expect(IDENTIFIER, "имя переменной").value;
+        expect(EQUALS, "'='");
+        node.left = new Node(parseExpr());
+        expect(SEMICOLON, "';'");
+        return node;
+    }
     // присваивание
     if (peek().type == IDENTIFIER && peek(1).type == EQUALS) {
         Node node; node.type = NODE_ASSIGN;
@@ -659,7 +704,10 @@ Node parseOne() {
         expect(LBRACE);
         while (peek().type != RBRACE && peek().type != END) {
             Node field; field.type = NODE_VAR_DECL;
-            field.varType = canonicalType(consume().value);
+            Token fieldType = consume();
+            if (!isTypeName(fieldType.value))
+                failAt(fieldType, "неизвестный тип поля '" + fieldType.value + "'");
+            field.varType = canonicalType(fieldType.value);
             field.varName = consume().value;
             expect(EQUALS);
             field.left = new Node(parseExpr());
