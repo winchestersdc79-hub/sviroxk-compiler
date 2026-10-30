@@ -1,0 +1,11 @@
+// Semantic analysis checks declarations, calls, assignments, and returns.
+fn float scale(float value, int factor) {
+    return value * factor;
+}
+
+let result: float = scale(2, 21);
+print(result);
+
+if (result == 42) {
+    print("Type checking passed.");
+}

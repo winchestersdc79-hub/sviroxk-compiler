@@ -50,6 +50,8 @@ struct Node {
     std::string varType;
     std::string varName;
     std::string op;
+    int line = 1;
+    int column = 1;
     Node* left = nullptr;
     Node* right = nullptr;
     Node* extra = nullptr;
@@ -60,5 +62,6 @@ struct Node {
 };
 
 Node parse(const std::vector<Token>& tokens);
+bool checkSemantics(const Node& program, const std::string& filename);
 
 #endif

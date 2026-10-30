@@ -6,6 +6,7 @@
 #include <cstdlib>
 #include "lexer.h"
 #include "parser.h"
+#include "semantic.h"
 #include "codegen.h"
 
 namespace fs = std::filesystem;
@@ -81,6 +82,7 @@ int main(int argc, char* argv[]) {
     allTokens.push_back({END, "", 1, 1});
 
     Node node = parse(allTokens);
+    if (!checkSemantics(node, argv[1])) return 2;
 
     CodeGen codegen;
     codegen.generate(node);

@@ -77,13 +77,17 @@ Node parsePrimary() {
         return left;
     }
     if (peek().type == TRUE_T) {
-        consume();
+        Token token = consume();
         left.type = NODE_NUMBER; left.value = "1";
+        left.varType = "bue";
+        left.line = token.line; left.column = token.column;
         return left;
     }
     if (peek().type == FALSE_T) {
-        consume();
+        Token token = consume();
         left.type = NODE_NUMBER; left.value = "0";
+        left.varType = "bue";
+        left.line = token.line; left.column = token.column;
         return left;
     }
     // математика
@@ -169,8 +173,14 @@ Node parsePrimary() {
         return left;
     }
     Token t = consume();
-    if (t.type == NUMBER)     { left.type = NODE_NUMBER;     left.value = t.value; }
-    else if (t.type == STRING)     { left.type = NODE_STRING;     left.value = t.value; }
+    left.line = t.line;
+    left.column = t.column;
+    if (t.type == NUMBER) {
+        left.type = NODE_NUMBER;
+        left.value = t.value;
+        left.varType = t.value.find('.') == std::string::npos ? "rox" : "dor";
+    }
+    else if (t.type == STRING) { left.type = NODE_STRING; left.value = t.value; left.varType = "cos"; }
     else if (t.type == COP) {
         left.type = NODE_FUNC_CALL;
         left.varName = consume().value;
@@ -186,6 +196,7 @@ Node parsePrimary() {
         if (peek().type == LPAREN) {
             left.type = NODE_FUNC_CALL;
             left.varName = t.value;
+            left.line = t.line; left.column = t.column;
             consume();
             while (peek().type != RPAREN && peek().type != END) {
                 left.args.push_back(parseExpr());
@@ -245,6 +256,8 @@ Node parseMul() {
         Node* b = new Node();
         b->type = NODE_BINOP;
         b->op = op;
+        b->line = gtokens[static_cast<size_t>(pos - 1)].line;
+        b->column = gtokens[static_cast<size_t>(pos - 1)].column;
         b->left = new Node(left);
         b->right = new Node(parseUnary());
         left = *b;
@@ -278,6 +291,7 @@ Node parseCond() {
         Node right = parseAdd();
         Node* c = new Node();
         c->type = NODE_BINOP;
+        c->line = op.line; c->column = op.column;
         c->op = op.value;
         c->left = new Node(left);
         c->right = new Node(right);
@@ -300,8 +314,10 @@ std::vector<Node> parseBlock() {
 Node parseOne() {
     // Short variable declaration: let count: int = 0;
     if (peek().type == LET) {
-        consume();
+        Token declarationToken = consume();
         Node node; node.type = NODE_VAR_DECL;
+        node.line = declarationToken.line;
+        node.column = declarationToken.column;
         node.varName = expect(IDENTIFIER).value;
         expect(COLON);
         node.varType = canonicalType(consume().value);
@@ -312,13 +328,15 @@ Node parseOne() {
     }
     // svi
     if (peek().type == SVI) {
-        consume();
+        Token declarationToken = consume();
         if (peek().type == TIP) {
             consume();
             std::string structName = consume().value;
             expect(LOR);
             std::string varName = consume().value;
             Node node;
+            node.line = declarationToken.line;
+            node.column = declarationToken.column;
             node.type = NODE_STRUCT_INSTANCE;
             node.varType = structName;
             node.varName = varName;
@@ -354,6 +372,8 @@ Node parseOne() {
         expect(EQUALS);
         if (isArray) {
             Node node; node.type = NODE_ARRAY_DECL;
+            node.line = declarationToken.line;
+            node.column = declarationToken.column;
             node.varType = varType;
             node.varName = varName;
             expect(LBRACKET);
@@ -366,6 +386,8 @@ Node parseOne() {
             return node;
         } else {
             Node node; node.type = NODE_VAR_DECL;
+            node.line = declarationToken.line;
+            node.column = declarationToken.column;
             node.varType = varType;
             node.varName = varName;
             node.left = new Node(parseExpr());
@@ -376,6 +398,7 @@ Node parseOne() {
     // slov
     if (peek().type == SLOV) {
         Node node; node.type = NODE_SLOV;
+        node.line = peek().line; node.column = peek().column;
         consume();
         expect(LPAREN);
         Node expr = parseExpr();
@@ -388,10 +411,15 @@ Node parseOne() {
     // fucn
     if (peek().type == FUCN) {
         Node node; node.type = NODE_FUNC_DEF;
+        node.line = peek().line;
+        node.column = peek().column;
+        Token functionKeyword = consume();
         node.varType = "rox";
-        consume();
-        if (isTypeToken(peek().type) && peek(1).type == IDENTIFIER &&
-            peek(2).type == LPAREN) {
+        if (peek().type == VOID_T) {
+            consume();
+            node.varType = "void";
+        } else if (isTypeToken(peek().type) && peek(1).type == IDENTIFIER &&
+                   peek(2).type == LPAREN) {
             node.varType = canonicalType(consume().value);
         }
         node.varName = consume().value;
@@ -421,6 +449,7 @@ Node parseOne() {
     // cop
     if (peek().type == COP) {
         Node node; node.type = NODE_FUNC_CALL;
+        node.line = peek().line; node.column = peek().column;
         consume();
         node.varName = consume().value;
         expect(LPAREN);
@@ -435,6 +464,7 @@ Node parseOne() {
     // rev
     if (peek().type == REV) {
         Node node; node.type = NODE_RETURN;
+        node.line = peek().line; node.column = peek().column;
         consume();
         node.left = new Node(parseExpr());
         expect(SEMICOLON);
@@ -549,6 +579,23 @@ Node parseOne() {
         expect(SEMICOLON);
         return node;
     }
+    // вызов функции как отдельный оператор
+    if (peek().type == IDENTIFIER && peek(1).type == LPAREN) {
+        Node node; node.type = NODE_FUNC_CALL;
+        Token name = consume();
+        node.varName = name.value;
+        node.line = name.line; node.column = name.column;
+        expect(LPAREN);
+        while (peek().type != RPAREN && peek().type != END) {
+            node.args.push_back(parseExpr());
+            if (peek().type == COMMA) consume();
+            else if (peek().type != RPAREN)
+                failAt(peek(), "ожидалась ',' или ')' в списке аргументов");
+        }
+        expect(RPAREN);
+        expect(SEMICOLON);
+        return node;
+    }
     // присваивание
     if (peek().type == IDENTIFIER && peek(1).type == EQUALS) {
         Node node; node.type = NODE_ASSIGN;
@@ -605,6 +652,8 @@ Node parseOne() {
     // tip
     if (peek().type == TIP) {
         Node node; node.type = NODE_STRUCT_DEF;
+        node.line = peek().line;
+        node.column = peek().column;
         consume();
         node.varName = consume().value;
         expect(LBRACE);

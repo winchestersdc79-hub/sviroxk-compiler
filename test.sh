@@ -24,6 +24,9 @@ sources=(
     "examples/dor_func.svx"
     "examples/full.svx"
     "examples/modern.svx"
+    "examples/typed.svx"
+    "examples/void.svx"
+    "examples/returns.svx"
 )
 
 for source in "${sources[@]}"; do
@@ -36,7 +39,11 @@ for source in "${sources[@]}"; do
         :
     else
         status=$?
-        echo "FAIL: compiler failed or exceeded 15s on $source (status $status)" >&2
+        if (( status == 2 )); then
+            echo "FAIL: semantic checker rejected valid source $source" >&2
+        else
+            echo "FAIL: compiler failed or exceeded 15s on $source (status $status)" >&2
+        fi
         cat "$work/compiler.err" >&2
         exit 1
     fi
@@ -82,7 +89,7 @@ expect_compile_error() {
         cat "$work/error.log" >&2
         exit 1
     fi
-    if ! grep -Eq 'Ошибка [0-9]+:[0-9]+' "$work/error.log"; then
+    if ! grep -Eq 'Ошибка [0-9]+:[0-9]+|^[^:]+:[0-9]+:[0-9]+: error\[' "$work/error.log"; then
         echo "FAIL: '$name' did not produce a source-location diagnostic" >&2
         cat "$work/error.log" >&2
         exit 1
@@ -94,6 +101,18 @@ expect_compile_error "missing-expression" 'let value: int = ;'
 expect_compile_error "missing-function-parameter" 'fn add(int left,) { return left; }'
 expect_compile_error "unexpected-character" 'print(1 ! 2);'
 expect_compile_error "unterminated-string" 'print("unfinished);'
+expect_compile_error "unknown-variable" 'print(not_declared);'
+expect_compile_error "unknown-function" 'let result: int = missing(1);'
+expect_compile_error "wrong-argument-type" 'fn twice(int value) { return value * 2; } let result: int = twice("text");'
+expect_compile_error "wrong-return-type" 'fn wrong() { return "text"; }'
+expect_compile_error "wrong-typed-return" 'fn int wrong() { return "text"; }'
+expect_compile_error "nonvoid-fallthrough" 'fn int maybe(bool flag) { if (flag) { return 1; } }'
+expect_compile_error "missing-return-else" 'fn choose(bool flag) { if (flag) { return 1; } else { print("no result"); } }'
+expect_compile_error "unknown-function-argument" 'fn add(int value) { return value; } let result: int = add(missing);'
+expect_compile_error "invalid-arithmetic" 'let result: int = "text" + 1;'
+expect_compile_error "wrong-assignment-type" 'let result: int = "text";'
+expect_compile_error "duplicate-variable" 'let result: int = 1; let result: int = 2;'
+expect_compile_error "break-outside-loop" 'brk;'
 
 IMPORT_DIR="$TMP_DIR/imports"
 mkdir -p "$IMPORT_DIR/lib"

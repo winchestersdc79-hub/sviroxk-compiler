@@ -13,6 +13,7 @@ llvm::Type* CodeGen::svType(const std::string& name) {
     if (name == "float") return builder.getDoubleTy();
     if (name == "string") return builder.getPtrTy();
     if (name == "bool") return builder.getInt32Ty();
+    if (name == "void") return builder.getVoidTy();
     if (name == "ptr" || name == "file" || name == "cos")
         return builder.getPtrTy();
     if (name == "dor" || name == "udor")
@@ -27,14 +28,21 @@ llvm::Type* CodeGen::svType(const std::string& name) {
 llvm::Value* CodeGen::castTo(llvm::Value* val, llvm::Type* ty) {
     if (!val || !ty) return val;
     if (val->getType() == ty) return val;
+    if (ty->isDoubleTy() && val->getType()->isIntegerTy(1))
+        return builder.CreateUIToFP(val, ty);
     if (ty->isDoubleTy() && val->getType()->isIntegerTy())
         return builder.CreateSIToFP(val, ty);
+    if (ty->isIntegerTy(32) && val->getType()->isIntegerTy(1))
+        return builder.CreateZExt(val, ty);
     if (ty->isIntegerTy(32) && val->getType()->isDoubleTy())
         return builder.CreateFPToSI(val, ty);
     if (ty->isIntegerTy(64) && val->getType()->isIntegerTy(32))
         return builder.CreateSExt(val, ty);
     if (ty->isIntegerTy(32) && val->getType()->isIntegerTy(64))
         return builder.CreateTrunc(val, ty);
+    if (ty->isIntegerTy(32) && val->getType()->isIntegerTy() &&
+        val->getType()->getIntegerBitWidth() < 32)
+        return builder.CreateZExt(val, ty);
     if (ty->isPointerTy() && !val->getType()->isPointerTy())
         return val;
     return val;
@@ -460,10 +468,7 @@ void CodeGen::genNode(const Node& node) {
         llvm::AllocaInst* alloca =
             builder.CreateAlloca(ty, nullptr, node.varName);
         llvm::Value* val = genExpr(*node.left);
-        if (node.varType == "dor" || node.varType == "udor") {
-            if (val->getType()->isIntegerTy())
-                val = builder.CreateSIToFP(val, builder.getDoubleTy());
-        }
+        val = castTo(val, ty);
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
     }
@@ -472,10 +477,7 @@ void CodeGen::genNode(const Node& node) {
         if (alloca) {
             llvm::Value* val = genExpr(*node.left);
             llvm::Type* ty = alloca->getAllocatedType();
-            if (ty->isDoubleTy() && val->getType()->isIntegerTy())
-                val = builder.CreateSIToFP(val, builder.getDoubleTy());
-            if (ty->isIntegerTy(32) && val->getType()->isDoubleTy())
-                val = builder.CreateFPToSI(val, builder.getInt32Ty());
+            val = castTo(val, ty);
             builder.CreateStore(val, alloca);
         }
     }
@@ -618,13 +620,15 @@ void CodeGen::genNode(const Node& node) {
             genNode(n);
             if (n.type == NODE_RETURN) { hasRet = true; break; }
         }
-        if (!hasRet) {
+        if (!hasRet && !retTy->isVoidTy()) {
             if (retTy->isDoubleTy())
                 builder.CreateRet(llvm::ConstantFP::get(builder.getDoubleTy(), 0.0));
             else if (retTy->isPointerTy())
                 builder.CreateRet(llvm::ConstantPointerNull::get(builder.getPtrTy()));
             else
                 builder.CreateRet(llvm::ConstantInt::get(retTy, 0));
+        } else if (!hasRet && retTy->isVoidTy()) {
+            builder.CreateRetVoid();
         }
         builder.SetInsertPoint(savedBlock);
         vars = savedVars;

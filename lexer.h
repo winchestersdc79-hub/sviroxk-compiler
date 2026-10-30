@@ -8,7 +8,7 @@ enum TokenType {
     // Переменные
     SVI, LOR, LET, COLON,
     // Типы
-    ROX, DOR, COS, BUE,
+    ROX, DOR, COS, BUE, VOID_T,
     // Условия
     ELES, SELE,
     // Циклы

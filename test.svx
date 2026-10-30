@@ -1,8 +1,8 @@
 svi cos lor s1 = "привет";
 svi cos lor s2 = "привет";
 svi cos lor s3 = "мир";
-svi rox lor eq1 = ser(s1, s2);
-svi rox lor eq2 = ser(s1, s3);
+svi bue lor eq1 = ser(s1, s2);
+svi bue lor eq2 = ser(s1, s3);
 slov(eq1);
 slov(eq2);
 svi rox lor n = 42;

@@ -1,0 +1,15 @@
+fn choose(bool flag) {
+    if (flag) {
+        return 1;
+    } else {
+        return 2;
+    }
+}
+
+fn void announce() {
+    print("All branches return consistently.");
+}
+
+let selected: int = choose(true);
+print(selected);
+announce();

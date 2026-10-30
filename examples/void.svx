@@ -1,0 +1,5 @@
+fn void announce() {
+    print("Procedure has no return value.");
+}
+
+announce();

@@ -51,6 +51,7 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "float") add(DOR,  word, tokLine, tokCol);
             else if (word == "string") add(COS, word, tokLine, tokCol);
             else if (word == "bool") add(BUE,  word, tokLine, tokCol);
+            else if (word == "void") add(VOID_T, word, tokLine, tokCol);
             else if (word == "rox")  add(ROX,  word, tokLine, tokCol);
             else if (word == "dor")  add(DOR,  word, tokLine, tokCol);
             else if (word == "cos")  add(COS,  word, tokLine, tokCol);
