@@ -1,22 +1,45 @@
 #include "parser.h"
 #include <iostream>
+#include <sstream>
+#include <cstdlib>
 
 static int pos = 0;
 static std::vector<Token> gtokens;
 
-Token peek() { return gtokens[pos]; }
-Token consume() { return gtokens[pos++]; }
+static Token peek(size_t offset = 0) {
+    if (gtokens.empty()) return {END, "", 1, 1};
+    size_t index = static_cast<size_t>(pos) + offset;
+    if (index >= gtokens.size()) return gtokens.back();
+    return gtokens[index];
+}
 
-Token expect(TokenType type) {
-    Token at = peek();
-    Token t = consume();
-    if (t.type != type) {
-        std::cerr << "Ошибка " << at.line << ":" << at.column
-                  << " ожидался другой токен, получено [" << t.value << "]"
-                  << std::endl;
-        exit(1);
+static Token consume() {
+    Token token = peek();
+    if (token.type != END && pos < static_cast<int>(gtokens.size())) ++pos;
+    return token;
+}
+
+static std::string tokenDescription(const Token& token) {
+    if (token.type == END) return "конец файла";
+    return "'" + token.value + "'";
+}
+
+[[noreturn]] static void failAt(const Token& token, const std::string& message) {
+    std::cerr << "Ошибка " << token.line << ':' << token.column << ": "
+              << message << std::endl;
+    std::exit(1);
+}
+
+static Token expect(TokenType type, const std::string& expected) {
+    Token token = peek();
+    if (token.type != type) {
+        failAt(token, "ожидалось " + expected + ", получено " + tokenDescription(token));
     }
-    return t;
+    return consume();
+}
+
+static Token expect(TokenType type) {
+    return expect(type, "другой токен");
 }
 
 static bool isTypeToken(TokenType t) {
@@ -42,9 +65,9 @@ std::vector<Node> parseBlock();
 Node parsePrimary() {
     Node left;
     // (dor)x — приведение типов
-    if (peek().type == LPAREN && pos+1 < (int)gtokens.size() &&
-        (gtokens[pos+1].type == ROX || gtokens[pos+1].type == DOR ||
-         gtokens[pos+1].type == CHR || gtokens[pos+1].type == ROX64)) {
+    if (peek().type == LPAREN &&
+        (peek(1).type == ROX || peek(1).type == DOR ||
+         peek(1).type == CHR || peek(1).type == ROX64)) {
         consume(); // (
         std::string castType = consume().value;
         consume(); // )
@@ -167,11 +190,8 @@ Node parsePrimary() {
             while (peek().type != RPAREN && peek().type != END) {
                 left.args.push_back(parseExpr());
                 if (peek().type == COMMA) consume();
-                else if (peek().type != RPAREN) {
-                    std::cerr << "Ошибка " << peek().line << ":" << peek().column
-                              << " ожидалась запятая или )" << std::endl;
-                    exit(1);
-                }
+                else if (peek().type != RPAREN)
+                    failAt(peek(), "ожидалась ',' или ')' в списке аргументов");
             }
             expect(RPAREN);
         } else if (peek().type == DOT) {
@@ -189,6 +209,8 @@ Node parsePrimary() {
             expect(RBRACKET);
             left = *access;
         }
+    } else {
+        failAt(t, "ожидалось выражение, получено " + tokenDescription(t));
     }
     return left;
 }
@@ -300,15 +322,12 @@ Node parseOne() {
             node.type = NODE_STRUCT_INSTANCE;
             node.varType = structName;
             node.varName = varName;
-            if (peek().type == EQUALS && pos + 1 < (int)gtokens.size() &&
-                gtokens[pos + 1].type == LBRACE) {
+            if (peek().type == EQUALS && peek(1).type == LBRACE) {
                 consume();
                 expect(LBRACE);
                 while (peek().type != RBRACE && peek().type != END) {
                     Node init;
-                    if (peek().type == IDENTIFIER &&
-                        pos + 1 < (int)gtokens.size() &&
-                        gtokens[pos + 1].type == EQUALS) {
+                    if (peek().type == IDENTIFIER && peek(1).type == EQUALS) {
                         init.varName = consume().value;
                         consume();
                         init.left = new Node(parseExpr());
@@ -371,19 +390,26 @@ Node parseOne() {
         Node node; node.type = NODE_FUNC_DEF;
         node.varType = "rox";
         consume();
-        if (isTypeToken(peek().type) && pos + 1 < (int)gtokens.size() &&
-            gtokens[pos + 1].type == IDENTIFIER &&
-            pos + 2 < (int)gtokens.size() &&
-            gtokens[pos + 2].type == LPAREN) {
+        if (isTypeToken(peek().type) && peek(1).type == IDENTIFIER &&
+            peek(2).type == LPAREN) {
             node.varType = canonicalType(consume().value);
         }
         node.varName = consume().value;
         expect(LPAREN);
         while (peek().type != RPAREN && peek().type != END) {
-            std::string ptype = canonicalType(consume().value);
-            std::string pname = consume().value;
+            Token typeToken = consume();
+            if (!isTypeToken(typeToken.type))
+                failAt(typeToken, "ожидался тип параметра функции");
+            std::string ptype = canonicalType(typeToken.value);
+            std::string pname = expect(IDENTIFIER, "имя параметра").value;
             node.params.push_back(ptype + ":" + pname);
-            if (peek().type == COMMA) consume();
+            if (peek().type == COMMA) {
+                consume();
+                if (peek().type == RPAREN)
+                    failAt(peek(), "после запятой ожидался параметр");
+            } else if (peek().type != RPAREN) {
+                failAt(peek(), "ожидалась ',' или ')' после параметра");
+            }
         }
         expect(RPAREN);
         expect(LBRACE);
@@ -498,8 +524,8 @@ Node parseOne() {
         return node;
     }
     // p.health = 10 — поле структуры
-    if (peek().type == IDENTIFIER && pos + 3 < (int)gtokens.size() &&
-        gtokens[pos + 1].type == DOT && gtokens[pos + 3].type == EQUALS) {
+    if (peek().type == IDENTIFIER && peek(1).type == DOT &&
+        peek(3).type == EQUALS) {
         std::string inst = consume().value;
         consume();
         std::string field = consume().value;
@@ -512,7 +538,7 @@ Node parseOne() {
         return node;
     }
     // arr[0] = 10 — присваивание элемента массива
-    if (peek().type == IDENTIFIER && pos+1 < (int)gtokens.size() && gtokens[pos+1].type == LBRACKET) {
+    if (peek().type == IDENTIFIER && peek(1).type == LBRACKET) {
         Node node; node.type = NODE_ARRAY_ASSIGN;
         node.varName = consume().value;
         consume(); // [
@@ -524,7 +550,7 @@ Node parseOne() {
         return node;
     }
     // присваивание
-    if (peek().type == IDENTIFIER && gtokens[pos+1].type == EQUALS) {
+    if (peek().type == IDENTIFIER && peek(1).type == EQUALS) {
         Node node; node.type = NODE_ASSIGN;
         node.varName = consume().value;
         consume(); // =
@@ -596,9 +622,7 @@ Node parseOne() {
         return node;
     }
 
-    std::cerr << "Ошибка " << peek().line << ":" << peek().column
-              << " неизвестная конструкция: [" << peek().value << "]" << std::endl;
-    exit(1);
+    failAt(peek(), "неизвестная конструкция, начинается с " + tokenDescription(peek()));
 }
 
 Node parse(const std::vector<Token>& tokens) {

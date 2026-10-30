@@ -62,4 +62,36 @@ for source in "${sources[@]}"; do
     cat "$work/output.txt"
 done
 
+expect_compile_error() {
+    local name=$1
+    local source=$2
+    local work="$TMP_DIR/invalid-$name"
+    local status=0
+    mkdir -p "$work"
+    printf '%s\n' "$source" > "$work/input.svx"
+
+    if (ulimit -c 0; timeout --signal=TERM 10s ./sc "$work/input.svx" >"$work/output.ll" 2>"$work/error.log"); then
+        echo "FAIL: invalid program '$name' compiled successfully" >&2
+        exit 1
+    else
+        status=$?
+    fi
+    if (( status >= 128 )); then
+        echo "FAIL: compiler crashed while handling '$name' (status $status)" >&2
+        cat "$work/error.log" >&2
+        exit 1
+    fi
+    if ! grep -Eq 'Ошибка [0-9]+:[0-9]+' "$work/error.log"; then
+        echo "FAIL: '$name' did not produce a source-location diagnostic" >&2
+        cat "$work/error.log" >&2
+        exit 1
+    fi
+    echo "PASS: invalid input '$name' reported an error without crashing"
+}
+
+expect_compile_error "missing-expression" 'let value: int = ;'
+expect_compile_error "missing-function-parameter" 'fn add(int left,) { return left; }'
+expect_compile_error "unexpected-character" 'print(1 ! 2);'
+expect_compile_error "unterminated-string" 'print("unfinished);'
+
 echo "All compiler tests passed."

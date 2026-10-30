@@ -1,6 +1,7 @@
 #include "lexer.h"
 #include <iostream>
 #include <cctype>
+#include <cstdlib>
 
 std::vector<Token> tokenize(const std::string& code) {
     std::vector<Token> tokens;
@@ -35,10 +36,11 @@ std::vector<Token> tokenize(const std::string& code) {
         int tokLine = line;
         int tokCol = column;
 
-        if (isalpha(code[i]) || code[i] == '_') {
+        if (isalpha(static_cast<unsigned char>(code[i])) || code[i] == '_') {
             std::string word;
             while (i < (int)code.size() &&
-                   (isalnum(code[i]) || code[i] == '_' || isdigit(code[i]))) {
+                   (isalnum(static_cast<unsigned char>(code[i])) ||
+                    code[i] == '_' || isdigit(static_cast<unsigned char>(code[i])))) {
                 word += code[i++];
                 column++;
             }
@@ -102,9 +104,10 @@ std::vector<Token> tokenize(const std::string& code) {
             continue;
         }
 
-        if (isdigit(code[i])) {
+        if (isdigit(static_cast<unsigned char>(code[i]))) {
             std::string num;
-            while (i < (int)code.size() && (isdigit(code[i]) || code[i] == '.')) {
+            while (i < (int)code.size() &&
+                   (isdigit(static_cast<unsigned char>(code[i])) || code[i] == '.')) {
                 num += code[i++];
                 column++;
             }
@@ -113,25 +116,65 @@ std::vector<Token> tokenize(const std::string& code) {
         }
 
         if (code[i] == '\'') {
-            i++;
-            column++;
-            int charVal = (unsigned char)code[i++];
-            column++;
-            i++;
-            column++;
+            ++i;
+            ++column;
+            if (i >= static_cast<int>(code.size()) || code[i] == '\n' || code[i] == '\'') {
+                std::cerr << "Ошибка " << tokLine << ':' << tokCol
+                          << ": ожидался один символ между одинарными кавычками" << std::endl;
+                std::exit(1);
+            }
+            unsigned char charVal = static_cast<unsigned char>(code[i++]);
+            ++column;
+            if (i >= static_cast<int>(code.size()) || code[i] != '\'') {
+                std::cerr << "Ошибка " << tokLine << ':' << tokCol
+                          << ": символьный литерал должен содержать один символ и закрывающую кавычку" << std::endl;
+                std::exit(1);
+            }
+            ++i;
+            ++column;
             add(NUMBER, std::to_string(charVal), tokLine, tokCol);
             continue;
         }
         if (code[i] == '"') {
             std::string str;
-            i++;
-            column++;
-            while (i < (int)code.size() && code[i] != '"') {
+            ++i;
+            ++column;
+            bool closed = false;
+            while (i < static_cast<int>(code.size())) {
+                if (code[i] == '"') {
+                    ++i;
+                    ++column;
+                    closed = true;
+                    break;
+                }
+                if (code[i] == '\n') break;
+                if (code[i] == '\\') {
+                    ++i;
+                    ++column;
+                    if (i >= static_cast<int>(code.size()) || code[i] == '\n') break;
+                    switch (code[i]) {
+                        case 'n': str += '\n'; break;
+                        case 'r': str += '\r'; break;
+                        case 't': str += '\t'; break;
+                        case '"': str += '"'; break;
+                        case '\\': str += '\\'; break;
+                        default:
+                            std::cerr << "Ошибка " << line << ':' << column
+                                      << ": неизвестная escape-последовательность" << std::endl;
+                            std::exit(1);
+                    }
+                    ++i;
+                    ++column;
+                    continue;
+                }
                 str += code[i++];
-                column++;
+                ++column;
             }
-            i++;
-            column++;
+            if (!closed) {
+                std::cerr << "Ошибка " << tokLine << ':' << tokCol
+                          << ": строковый литерал не закрыт кавычкой" << std::endl;
+                std::exit(1);
+            }
             add(STRING, str, tokLine, tokCol);
             continue;
         }
@@ -154,8 +197,12 @@ std::vector<Token> tokenize(const std::string& code) {
                     add(NEQ, "!=", tokLine, tokCol);
                     i += 2;
                     column += 2;
+                    continue;
                 }
-                continue;
+                std::cerr << "Ошибка " << tokLine << ':' << tokCol
+                          << ": неизвестный оператор '!'; возможно, имелось в виду '!='"
+                          << std::endl;
+                std::exit(1);
             case '>': add(GT, ">", tokLine, tokCol); break;
             case '<': add(LT, "<", tokLine, tokCol); break;
             case '+': add(PLUS, "+", tokLine, tokCol); break;
