@@ -1,0 +1,20 @@
+# Compiler/build outputs
+*.o
+/sc
+/sviroxk
+/hello
+/test
+/*.ll
+/*.bc
+/*.s
+/build.log
+/core
+core.*
+
+# Local build/test scratch
+*.exe
+*.out
+*.tmp
+.tmp/
+build/
+dist/
