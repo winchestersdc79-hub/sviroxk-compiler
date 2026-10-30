@@ -26,7 +26,7 @@ enum TokenType {
     LBRACE, RBRACE,
     LBRACKET, RBRACKET, COMMA,
     // Математика
-    PLUS, MINUS, STAR, SLASH, AMP,
+    PLUS, MINUS, STAR, SLASH, PERCENT, AMP,
     PTR,
     ATK, ZAP, PRO, ZAK, FILE_T,
     SQRT, ABS, POW, MAX, MIN, FLO, CEL, RON, RAN,

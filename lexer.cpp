@@ -218,6 +218,7 @@ std::vector<Token> tokenize(const std::string& code) {
             case '*': add(STAR, "*", tokLine, tokCol); break;
             case '&': add(AMP, "&", tokLine, tokCol); break;
             case '/': add(SLASH, "/", tokLine, tokCol); break;
+            case '%': add(PERCENT, "%", tokLine, tokCol); break;
             case ';': add(SEMICOLON, ";", tokLine, tokCol); break;
             case '(': add(LPAREN, "(", tokLine, tokCol); break;
             case ')': add(RPAREN, ")", tokLine, tokCol); break;

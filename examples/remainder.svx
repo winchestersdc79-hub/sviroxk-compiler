@@ -1,0 +1,6 @@
+int signed_value = -17 % 5;
+u32 unsigned_left = 17;
+u32 unsigned_right = 5;
+u32 unsigned_value = unsigned_left % unsigned_right;
+print(signed_value);
+print(unsigned_value);

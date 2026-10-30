@@ -30,6 +30,7 @@ sources=(
     "examples/fixed_width.svx"
     "examples/fixed_width_args.svx"
     "examples/signedness.svx"
+    "examples/remainder.svx"
 )
 
 for source in "${sources[@]}"; do
@@ -96,6 +97,13 @@ for source in "${sources[@]}"; do
         expected=$'201\n-19'
         if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
             echo "FAIL: narrow signedness promotion mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/remainder.svx" ]]; then
+        expected=$'-2\n2'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: signed/unsigned remainder mismatch" >&2
             cat "$work/output.txt" >&2
             exit 1
         fi

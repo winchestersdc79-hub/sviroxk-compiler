@@ -270,7 +270,7 @@ Node parseUnary() {
 // * и / — умножение и деление (+ и - в parseAdd). Символы те же: + - * /
 Node parseMul() {
     Node left = parseUnary();
-    while (peek().type == STAR || peek().type == SLASH) {
+    while (peek().type == STAR || peek().type == SLASH || peek().type == PERCENT) {
         std::string op = consume().value;
         Node* b = new Node();
         b->type = NODE_BINOP;
