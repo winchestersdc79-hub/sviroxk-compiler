@@ -35,6 +35,7 @@ sources=(
     "examples/comparisons.svx"
     "examples/scientific.svx"
     "examples/stdlib_math.svx"
+    "examples/stdlib_abs_min.svx"
     "examples/casts.svx"
     "examples/operators.svx"
 )
@@ -141,6 +142,13 @@ for source in "${sources[@]}"; do
             cat "$work/output.txt" >&2
             exit 1
         fi
+    elif [[ "$source" == "examples/stdlib_abs_min.svx" ]]; then
+        expected=$'2147483648'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: math_abs failed for the minimum i32 value" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
     elif [[ "$source" == "examples/casts.svx" ]]; then
         expected=$'127\n255\n1.250000\n1.250000\n127'
         if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
@@ -192,6 +200,7 @@ expect_compile_error "unexpected-character" 'print(1 ! 2);'
 expect_compile_error "unterminated-string" 'print("unfinished);'
 expect_compile_error "unknown-variable" 'print(not_declared);'
 expect_compile_error "unknown-function" 'let result: int = missing(1);'
+expect_compile_error "math-abs-out-of-range-argument" "imp \"$PWD/stdlib/math/math.svx\"; let result: long = math_abs(2147483648);"
 expect_compile_error "wrong-argument-type" 'fn twice(int value) { return value * 2; } let result: int = twice("text");'
 expect_compile_error "wrong-return-type" 'fn wrong() { return "text"; }'
 expect_compile_error "wrong-typed-return" 'fn int wrong() { return "text"; }'

@@ -1,8 +1,8 @@
 imp "../stdlib/math/math.svx";
 
-let absolute: int = math_abs(-17);
-let lower: int = math_min(absolute, 12);
-let upper: int = math_max(lower, 20);
+let absolute: long = math_abs(-17);
+let lower: long = math_min(absolute, 12);
+let upper: long = math_max(lower, 20);
 let even: bool = math_is_even(upper);
 
 print(absolute);

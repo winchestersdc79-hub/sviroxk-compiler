@@ -17,7 +17,7 @@
 - [ ] Namespace modules, visibility, stable symbol resolution.
 
 ## P2 — библиотека и инструментальная цепочка
-- [ ] Math module: расширить безопасные helpers, тестировать каждую API функцию.
+- [~] Math module: `math_abs` безопасно обрабатывает INT_MIN через i64 return; min/max/is_even принимают i64. Остальные math API ещё отсутствуют.
 - [ ] UTF-8 string representation and safe formatting.
 - [ ] `fs`/`io` errors and resource cleanup.
 - [ ] Sanitizer CI / warnings CI.

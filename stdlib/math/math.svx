@@ -1,15 +1,17 @@
 // SC Standard Library: small, source-level integer helpers.
 // Keep names distinct from compiler built-ins while the module system is minimal.
 
-fn int math_abs(int value) {
+// Returns the absolute magnitude as a 64-bit signed integer, including abs(INT_MIN).
+fn long math_abs(int value) {
     if (value < 0) {
-        return 0 - value;
+        return 0 - (long) value;
     } else {
-        return value;
+        return (long) value;
     }
 }
 
-fn int math_min(int left, int right) {
+// Returns the smaller signed 64-bit integer.
+fn long math_min(long left, long right) {
     if (left < right) {
         return left;
     } else {
@@ -17,7 +19,8 @@ fn int math_min(int left, int right) {
     }
 }
 
-fn int math_max(int left, int right) {
+// Returns the larger signed 64-bit integer.
+fn long math_max(long left, long right) {
     if (left > right) {
         return left;
     } else {
@@ -25,6 +28,7 @@ fn int math_max(int left, int right) {
     }
 }
 
-fn bool math_is_even(int value) {
+// Returns whether the signed 64-bit integer is divisible by two.
+fn bool math_is_even(long value) {
     return value % 2 == 0;
 }

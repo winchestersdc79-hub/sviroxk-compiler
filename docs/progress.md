@@ -21,4 +21,9 @@
 - Исправлено: unused `fcloseType`, warning grouping, AST leaks. Ограничение: arena пока глобальная и parser state global; глубоко-copying Node с raw children остаётся архитектурным долгом.
 - Добавлена семантическая валидация numeric literals в выражениях; integer/floating overflow и suffix garbage теперь получают обычную semantic diagnostic до LLVM codegen. Тесты `print(9223372036854775808)`, `print(1e9999)`, `print(123abc)` проходят как ожидаемые ошибки.
 - После добавления range tests полный обычный suite прошёл; требуется повторить санитайзеры на финальном состоянии этого исправления.
-- Следующее: выполнить sanitizer regression, затем commit literal range validation отдельной порцией.
+- Санитайзеры повторены после range validation: обычный suite и ASan/UBSan + LeakSanitizer прошли.
+- Исправлено: `math_abs(INT_MIN)` ранее вычислял `0 - value` в i32 и вызывал signed overflow. Теперь вход `int` расширяется до `long` до отрицания, результат API — `long`.
+- Сигнатуры `math_min`, `math_max`, `math_is_even` приведены к `long`, чтобы принимать результат `math_abs` без сужения.
+- Добавлен `examples/stdlib_abs_min.svx` с ожидаемым результатом `2147483648` и негативный тест на аргумент за пределами `int`.
+- Обычный `./test.sh`: прошёл; полный `-Wall -Wextra -Werror -fsanitize=address,undefined`, LeakSanitizer `detect_leaks=1`: прошёл.
+- Следующий приоритет: улучшить parser recovery / устранить глобальное состояние, либо сделать целочисленные касты checked runtime operation.
