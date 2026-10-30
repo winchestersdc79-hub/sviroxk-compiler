@@ -118,14 +118,14 @@ private:
                 if (parsed != text.size() || !std::isfinite(value)) return false;
                 return type != "f32" || std::fabs(value) <= std::numeric_limits<float>::max();
             }
-            if (type == "i8") { auto v = std::stoll(text); return v >= -128 && v <= 127; }
-            if (type == "i16") { auto v = std::stoll(text); return v >= -32768 && v <= 32767; }
-            if (type == "i32") { auto v = std::stoll(text); return v >= INT32_MIN && v <= INT32_MAX; }
-            if (type == "i64") { std::stoll(text); return true; }
-            if (type == "u8") { auto v = std::stoull(text); return v <= 255; }
-            if (type == "u16") { auto v = std::stoull(text); return v <= 65535; }
-            if (type == "u32") { auto v = std::stoull(text); return v <= UINT32_MAX; }
-            if (type == "u64") { std::stoull(text); return text.empty() || text[0] != '-'; }
+            if (type == "i8") { size_t n = 0; auto v = std::stoll(text, &n); return n == text.size() && v >= -128 && v <= 127; }
+            if (type == "i16") { size_t n = 0; auto v = std::stoll(text, &n); return n == text.size() && v >= -32768 && v <= 32767; }
+            if (type == "i32") { size_t n = 0; auto v = std::stoll(text, &n); return n == text.size() && v >= INT32_MIN && v <= INT32_MAX; }
+            if (type == "i64") { size_t n = 0; std::stoll(text, &n); return n == text.size(); }
+            if (type == "u8") { size_t n = 0; auto v = std::stoull(text, &n); return n == text.size() && text[0] != '-' && v <= 255; }
+            if (type == "u16") { size_t n = 0; auto v = std::stoull(text, &n); return n == text.size() && text[0] != '-' && v <= 65535; }
+            if (type == "u32") { size_t n = 0; auto v = std::stoull(text, &n); return n == text.size() && text[0] != '-' && v <= UINT32_MAX; }
+            if (type == "u64") { size_t n = 0; std::stoull(text, &n); return n == text.size() && !text.empty() && text[0] != '-'; }
         } catch (...) { return false; }
         return false;
     }
@@ -182,9 +182,17 @@ private:
 
     std::string expression(const Node& node) {
         switch (node.type) {
-        case NODE_NUMBER:
-            if (!node.varType.empty()) return normalize(node.varType);
-            return node.value.find('.') == std::string::npos ? "i32" : "f64";
+        case NODE_NUMBER: {
+            const std::string literalType = !node.varType.empty()
+                ? normalize(node.varType)
+                : node.value.find_first_of(".eE") == std::string::npos ? "i32" : "f64";
+            if ((literalType == "f32" || literalType == "f64" || isInteger(literalType)) &&
+                !literalFits(literalType, node.value)) {
+                error(node, "числовой литерал вне диапазона типа '" + typeName(literalType) + "'");
+                return "<error>";
+            }
+            return literalType;
+        }
         case NODE_STRING:
             return "str";
         case NODE_IDENTIFIER: {

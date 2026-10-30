@@ -11,6 +11,14 @@
 - Полный `./test.sh` под `-fsanitize=address,undefined`, `ASAN_OPTIONS=detect_leaks=1`: прошёл.
 - Следующее: завершить cleanup git-generated artifacts, затем CLI version/help, спецификацию реализованного синтаксиса и CI. Продолжить аудит UB/краевых случаев.
 
-## Цикл 2 — продолжается
-- Baseline для изменений цикла: `a0abc61` и чистый Git status.
-- Задача: регулярно прогонять строгую и sanitizer сборку; исправления оформлять малыми отдельными коммитами.
+## Цикл 2 — memory ownership и scalar bounds
+- Baseline: `a0abc61`; обычные build/test прошли.
+- LeakSanitizer воспроизвёл утечку `Node*` в parser, включая binary-expression copies. Перевёл parser allocations на arena, владеющую узлами весь parse/compile lifetime.
+- Добавлен `examples/array_write.svx` для ранее непроверенного array element assignment/read.
+- `./test.sh`: все positive/negative cases прошли.
+- `CXXFLAGS='-Wall -Wextra -Werror' ./build.sh`: прошёл без предупреждений.
+- `CXXFLAGS='-Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' ASAN_OPTIONS=detect_leaks=1 UBSAN_OPTIONS=print_stacktrace=1 ./test.sh`: прошёл без ASan/UBSan/LeakSanitizer ошибок.
+- Исправлено: unused `fcloseType`, warning grouping, AST leaks. Ограничение: arena пока глобальная и parser state global; глубоко-copying Node с raw children остаётся архитектурным долгом.
+- Добавлена семантическая валидация numeric literals в выражениях; integer/floating overflow и suffix garbage теперь получают обычную semantic diagnostic до LLVM codegen. Тесты `print(9223372036854775808)`, `print(1e9999)`, `print(123abc)` проходят как ожидаемые ошибки.
+- После добавления range tests полный обычный suite прошёл; требуется повторить санитайзеры на финальном состоянии этого исправления.
+- Следующее: выполнить sanitizer regression, затем commit literal range validation отдельной порцией.

@@ -6,7 +6,7 @@
 - [ ] Убрать глобальное состояние parser и сделать AST ownership безопасным при копировании Node (arena пока локальный workaround).
 - [ ] Усилить ASan/UBSan на array/pointer/file/memory runtime cases; добавить проверки утечек.
 - [ ] Исправить все compiler warnings под `-Wall -Wextra -Werror`.
-- [ ] Закрыть UB в numeric literal conversions и signed/unsigned casts.
+- [~] Прямые numeric literals во всех expression contexts проверяются до codegen. Остаются checked casts для вычисляемых значений и точное signed/unsigned conversion semantics.
 - [ ] Bounds checks для доступных массивов; определить exit/diagnostic contract.
 
 ## P1 — зрелость compiler

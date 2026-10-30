@@ -7,6 +7,7 @@ SC находится на ранней стадии разработки. На�
 - Generated ARM64 binaries, object files, LLVM/assembly output and empty build log removed from Git tracking; `.gitignore` excludes local build products. `test.svx` retained as an actual source regression fixture; stale `test` executable and unreferenced `test.txt` removed.
 - Parser AST nodes use a parse-lifetime owning arena instead of leaked raw `new` allocations; leak-detection sanitizer suite passes.
 - `build.sh` accepts `CXXFLAGS`; `-Wall -Wextra -Werror` and ASan/UBSan+LeakSanitizer verification passed.
+- Semantic analysis rejects out-of-range integer/float literals and trailing parse garbage in every expression context before LLVM generation.
 
 | Область | Статус |
 |---------|--------|
