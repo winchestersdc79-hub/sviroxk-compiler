@@ -1,0 +1,12 @@
+uint n = 4;
+n = n + 1;
+byte b = 6;
+b = b + 1;
+short s = 10;
+s = s + 1;
+float f = 1.5;
+f = f * 2.5;
+print(n);
+print(b);
+print(s);
+print(f);

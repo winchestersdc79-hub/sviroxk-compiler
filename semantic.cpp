@@ -609,7 +609,27 @@ private:
             }
             std::string expected = symbol ? symbol->type : structFields_[node.varName];
             std::string actual = expression(*node.left);
-            if (actual != "<error>" && !compatible(expected, actual))
+            bool literalArithmeticFits = false;
+            if (symbol && node.left->type == NODE_BINOP &&
+                (node.left->op == "+" || node.left->op == "-" ||
+                 node.left->op == "*" || node.left->op == "/" || node.left->op == "%")) {
+                const Node* literal = nullptr;
+                const Node* other = nullptr;
+                if (isNumericLiteral(*node.left->left)) {
+                    literal = node.left->left;
+                    other = node.left->right;
+                } else if (isNumericLiteral(*node.left->right)) {
+                    literal = node.left->right;
+                    other = node.left->left;
+                }
+                if (literal && other->type == NODE_IDENTIFIER && other->value == node.varName) {
+                    const bool floatingLiteral = literal->value.find_first_of(".eE") != std::string::npos;
+                    literalArithmeticFits = floatingLiteral
+                        ? (expected == "f32" || expected == "f64") && literalFits(expected, literal->value)
+                        : isInteger(expected) && literalFits(expected, literal->value);
+                }
+            }
+            if (actual != "<error>" && !compatible(expected, actual) && !literalArithmeticFits)
                 error(node, "нельзя присвоить '" + typeName(actual) + "' значению типа '" + typeName(expected) + "'");
             break;
         }
