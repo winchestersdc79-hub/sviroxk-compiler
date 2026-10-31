@@ -14,9 +14,25 @@ CXX=${CXX:-clang++}
 read -r -a EXTRA_CXXFLAGS <<< "${CXXFLAGS:-}"
 LLVM_CXXFLAGS=$(llvm-config --cxxflags)
 LLVM_LDFLAGS=$(llvm-config --ldflags --libs)
+read -r -a LLVM_CXXFLAG_ARRAY <<< "$LLVM_CXXFLAGS"
+LLVM_COMPILE_FLAGS=()
+for ((i = 0; i < ${#LLVM_CXXFLAG_ARRAY[@]}; ++i)); do
+    flag=${LLVM_CXXFLAG_ARRAY[i]}
+    if [[ "$flag" == -I* ]]; then
+        include_dir=${flag#-I}
+        if [[ "$include_dir" == *llvm* ]]; then
+            LLVM_COMPILE_FLAGS+=("-isystem" "$include_dir")
+        else
+            LLVM_COMPILE_FLAGS+=("$flag")
+        fi
+    else
+        LLVM_COMPILE_FLAGS+=("$flag")
+    fi
+done
 
 for source in main lexer parser semantic codegen; do
-    "$CXX" -c "$source.cpp" $LLVM_CXXFLAGS "${EXTRA_CXXFLAGS[@]}" -fexceptions -o "$BUILD_DIR/$source.o"
+    "$CXX" -c "$source.cpp" "${LLVM_COMPILE_FLAGS[@]}" \
+        "${EXTRA_CXXFLAGS[@]}" -fexceptions -o "$BUILD_DIR/$source.o"
 done
 
 "$CXX" "$BUILD_DIR/main.o" "$BUILD_DIR/lexer.o" \
