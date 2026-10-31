@@ -13,7 +13,7 @@ SC находится на ранней стадии разработки. На�
 - Parser AST nodes use a parse-lifetime owning arena instead of leaked raw `new` allocations; leak-detection sanitizer suite passes.
 - Legacy `rep` now replaces the first occurrence into a dynamically sized heap buffer; callers release it with `del`. Long input, match/no-match and sanitizer cases pass; OOM/size overflow currently abort.
 - `build.sh` accepts `CXXFLAGS`; `-Wall -Wextra -Werror` and ASan/UBSan+LeakSanitizer verification passed.
-- Semantic analysis rejects out-of-range integer/float literals and trailing parse garbage in every expression context before LLVM generation.
+- Semantic analysis rejects out-of-range integer/float literals and trailing parse garbage in every expression context before LLVM generation; implicit decimal/exponent float-literal-to-integer conversion is rejected, while explicit numeric casts remain supported.
 
 | Область | Статус |
 |---------|--------|
@@ -29,7 +29,7 @@ SC находится на ранней стадии разработки. На�
 
 ## Следующие направления
 
-- [~] Скалярные типы и алиасы `int/i32`, `uint/u32`, `short/i16`, `ushort/u16`, `long/i64`, `ulong/u64`, `byte/u8`, `float/f32`, `double/f64`; прямые литералы проверяются по диапазону, явные скалярные casts проходят runtime-тесты. `i8/i16` продвигаются до i32, `u8/u16` до u32; mixed signedness от 32 бит отклоняется. Decimal/exponent float literals поддержаны и покрыты runtime-тестами. Точные массивы/поля структур отклоняются; pointer/heap array path остаётся i32; runtime overflow checks ещё нет.
+- [~] Скалярные типы и алиасы `int/i32`, `uint/u32`, `short/i16`, `ushort/u16`, `long/i64`, `ulong/u64`, `byte/u8`, `float/f32`, `double/f64`; прямые литералы проверяются по диапазону, явные скалярные casts проходят runtime-тесты. `i8/i16` продвигаются до i32, `u8/u16` до u32; mixed signedness от 32 бит отклоняется. Decimal/exponent float literals поддержаны и покрыты runtime-тестами; их неявное преобразование в integer запрещено, явный cast покрыт положительным и отрицательными compile tests. Точные массивы/поля структур отклоняются; pointer/heap array path остаётся i32; runtime overflow checks ещё нет.
 - [~] Операторы `<=`, `>=`, `&&`, `||`, унарный `!` и скобочная группировка реализованы; `&&`/`||` используют short-circuit CFG и проверяются побочными эффектами правого операнда. Числовые logical values приводятся к truthy/falsy; язык пока не имеет отдельного требования bool-only для условий.
 - [~] Runtime bounds checks реализованы для статических массивов: отрицательный и верхний индекс дают диагностику и ненулевой exit. Динамические ptr-массивы не содержат длину и пока не проверяются.
 - [ ] Устойчивое дерево синтаксиса и диагностические сообщения

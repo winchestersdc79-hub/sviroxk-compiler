@@ -59,6 +59,11 @@
 - Dynamic ptr arrays не хранят runtime length; их границы остаются непроверяемыми и задокументированы как ограничение.
 - Коммит: `9d9eb8a`.
 
+## Цикл 7 — строгая конверсия float literals в integer
+- Запрещено неявное преобразование decimal/exponent float literals в integer, включая инициализацию `int` значениями `3.0` и `1e3`; семантическая ошибка возникает до LLVM lowering.
+- Явный cast `(int) 3.0` сохраняет поддержку и проверяется положительным примером `examples/numeric_literals.svx`.
+- Добавлены отрицательные проверки для decimal и exponent литералов; обычный и строгий sanitizer suite выполнены в рамках этого цикла.
+
 ## Цикл 6 — текущая работа
 - Проверено состояние repo и backlog. Остались незакоммиченные `codegen.cpp`, `semantic.cpp`, `test.sh`, `examples/string_replace.svx` после предыдущего rep fix.
 - При очередной сборке выяснилось, что `build.sh` создаёт `sc` без executable permission; sanitizer runner спотыкался на status 126. Исправлено добавлением chmod на бинарник.

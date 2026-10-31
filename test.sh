@@ -42,6 +42,7 @@ sources=(
     "examples/dor_func.svx"
     "examples/full.svx"
     "examples/modern.svx"
+    "examples/numeric_literals.svx"
     "examples/typed.svx"
     "examples/void.svx"
     "examples/returns.svx"
@@ -139,6 +140,13 @@ for source in "${sources[@]}"; do
         expected=$'1\n1'
         if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
             echo "FAIL: mixed-width comparisons mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/numeric_literals.svx" ]]; then
+        expected=$'3.000000\n1000.000000\n3'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: decimal/exponent numeric literal semantics mismatch" >&2
             cat "$work/output.txt" >&2
             exit 1
         fi
@@ -301,6 +309,8 @@ expect_compile_error "nonvoid-fallthrough" 'fn int maybe(bool flag) { if (flag) 
 expect_compile_error "missing-return-else" 'fn choose(bool flag) { if (flag) { return 1; } else { print("no result"); } }'
 expect_compile_error "unknown-function-argument" 'fn add(int value) { return value; } let result: int = add(missing);'
 expect_compile_error "invalid-arithmetic" 'let result: int = "text" + 1;'
+expect_compile_error "float-literal-not-implicit-int" 'int value = 3.0;'
+expect_compile_error "exponent-literal-not-implicit-int" 'int value = 1e3;'
 expect_compile_error "wrong-assignment-type" 'let result: int = "text";'
 expect_compile_error "i8-overflow" 'i8 value = 128;'
 expect_compile_error "i8-cast-overflow" 'i8 value = (i8) 128;'

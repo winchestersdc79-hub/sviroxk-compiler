@@ -59,7 +59,7 @@ EBNF — удобочитаемая схема покрытия, не форма
 ## Типы и семантика
 
 - Алиасы: `int/i32`, `uint/u32`, `short/i16`, `ushort/u16`, `long/i64`, `ulong/u64`, `byte/u8`, `float/f32`, `double/f64`, `str` и `bool`.
-- Прямые integer/float literals проверяются semantic pass до LLVM lowering; поддержана десятичная точка и `e/E` exponent.
+- Прямые integer/float literals проверяются semantic pass до LLVM lowering; поддержана десятичная точка и `e/E` exponent. Неявный float-literal-to-integer запрещён; для преобразования нужен явный cast, например `(int) 3.0`.
 - Присваивания и вызовы проверяют типы. Безопасные widening rules ограничены текущей реализацией; mixed signed/unsigned arithmetic и comparisons отклоняются.
 - Узкая integer арифметика продвигается к 32 битам. Для полных правил signedness см. `README.md` и тесты `examples/fixed_width.svx`.
 - `&&`/`||` выполняются short-circuit; целочисленные условия интерпретируются как false при нуле и true иначе.

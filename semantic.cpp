@@ -183,12 +183,17 @@ private:
     std::string expression(const Node& node) {
         switch (node.type) {
         case NODE_NUMBER: {
+            const bool floatingLiteral = node.value.find_first_of(".eE") != std::string::npos;
             const std::string literalType = !node.varType.empty()
                 ? normalize(node.varType)
-                : node.value.find_first_of(".eE") == std::string::npos ? "i32" : "f64";
+                : floatingLiteral ? "f64" : "i32";
             if ((literalType == "f32" || literalType == "f64" || isInteger(literalType)) &&
                 !literalFits(literalType, node.value)) {
                 error(node, "числовой литерал вне диапазона типа '" + typeName(literalType) + "'");
+                return "<error>";
+            }
+            if (floatingLiteral && isInteger(literalType)) {
+                error(node, "float literal нельзя неявно преобразовать в целый тип; используйте явный cast");
                 return "<error>";
             }
             return literalType;
@@ -244,6 +249,7 @@ private:
                 error(node, "явное преобразование между '" + typeName(source) +
                             "' и '" + typeName(target) + "' не поддерживается");
             else if (node.left->type == NODE_NUMBER &&
+                     node.left->value.find_first_of(".eE") == std::string::npos &&
                      isInteger(target) && !literalFits(target, node.left->value))
                 error(node, "числовой литерал вне диапазона типа '" + typeName(target) + "'");
             return target;

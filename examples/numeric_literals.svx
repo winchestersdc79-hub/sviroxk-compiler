@@ -1,0 +1,6 @@
+double decimal = 3.0;
+double exponent = 1e3;
+int exact_integer = (int) 3.0;
+print(decimal);
+print(exponent);
+print(exact_integer);
