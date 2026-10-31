@@ -83,6 +83,38 @@ unsigned CodeGen::integerWidth(const Node& node) const {
     return 32;
 }
 
+void CodeGen::emitArrayBoundsCheck(llvm::Value* index, unsigned length,
+                                   const Node& location) {
+    if (index->getType()->isIntegerTy(1))
+        index = builder.CreateZExt(index, builder.getInt32Ty());
+    if (index->getType()->getIntegerBitWidth() < 64) {
+        index = isUnsignedExpr(location) ? builder.CreateZExt(index, builder.getInt64Ty())
+                                         : builder.CreateSExt(index, builder.getInt64Ty());
+    }
+    llvm::Value* nonNegative = isUnsignedExpr(location)
+        ? builder.getTrue()
+        : builder.CreateICmpSGE(index, builder.getInt64(0));
+    llvm::Value* belowLength = builder.CreateICmpULT(index, builder.getInt64(length));
+    llvm::Value* inBounds = builder.CreateAnd(nonNegative, belowLength);
+    llvm::Function* function = builder.GetInsertBlock()->getParent();
+    llvm::BasicBlock* valid = llvm::BasicBlock::Create(context, "index_valid", function);
+    llvm::BasicBlock* invalid = llvm::BasicBlock::Create(context, "index_invalid", function);
+    builder.CreateCondBr(inBounds, valid, invalid);
+
+    builder.SetInsertPoint(invalid);
+    const std::string message = "SC runtime error: array index out of bounds at line " +
+        std::to_string(location.line) + ", column " + std::to_string(location.column);
+    builder.CreateCall(putsFunc, {getStringPtr(message)});
+    llvm::FunctionType* exitType = llvm::FunctionType::get(
+        builder.getVoidTy(), {builder.getInt32Ty()}, false);
+    llvm::Function* exitF = module.getFunction("exit");
+    if (!exitF) exitF = llvm::Function::Create(exitType,
+        llvm::Function::ExternalLinkage, "exit", module);
+    builder.CreateCall(exitF, {builder.getInt32(1)});
+    builder.CreateUnreachable();
+    builder.SetInsertPoint(valid);
+}
+
 bool CodeGen::isUnsignedExpr(const Node& node) const {
     if (node.type == NODE_NUMBER) return false;
     if (node.type == NODE_IDENTIFIER) {
@@ -165,6 +197,7 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             llvm::ArrayType* at =
                 llvm::ArrayType::get(builder.getInt32Ty(), n);
             llvm::Value* idx = genExpr(*node.left);
+            emitArrayBoundsCheck(idx, n, node);
             llvm::Value* gep = builder.CreateInBoundsGEP(
                 at, arr, {builder.getInt32(0), idx});
             return builder.CreateLoad(builder.getInt32Ty(), gep);
@@ -674,6 +707,7 @@ void CodeGen::genNode(const Node& node) {
                 llvm::ArrayType* at =
                     llvm::ArrayType::get(builder.getInt32Ty(), n);
                 llvm::Value* idx = genExpr(*node.left);
+                emitArrayBoundsCheck(idx, n, node);
                 llvm::Value* gep = builder.CreateInBoundsGEP(
                     at, arr, {builder.getInt32(0), idx});
                 builder.CreateStore(genExpr(*node.right), gep);

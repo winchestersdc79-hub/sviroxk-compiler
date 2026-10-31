@@ -188,6 +188,44 @@ for source in "${sources[@]}"; do
     cat "$work/output.txt"
 done
 
+expect_runtime_error() {
+    local name=$1
+    local source=$2
+    local expected=$3
+    local work="$TMP_DIR/runtime-error-$name"
+    mkdir -p "$work"
+    if ! timeout --signal=TERM 15s "$SC_BIN" "$source" >"$work/module.ll" 2>"$work/compiler.err"; then
+        echo "FAIL: runtime-error source '$source' did not compile" >&2
+        cat "$work/compiler.err" >&2
+        exit 1
+    fi
+    llvm-as "$work/module.ll" -o "$work/module.bc"
+    llc "$work/module.bc" -o "$work/program.s"
+    clang -no-pie "$work/program.s" -o "$work/program" -lm
+    local status=0
+    if (ulimit -c 0; timeout --signal=TERM 10s "$work/program" >"$work/output.log" 2>"$work/error.log"); then
+        echo "FAIL: runtime error '$name' did not fail" >&2
+        exit 1
+    else
+        status=$?
+    fi
+    if (( status >= 128 )); then
+        echo "FAIL: runtime error '$name' crashed (status $status)" >&2
+        cat "$work/error.log" >&2
+        exit 1
+    fi
+    if ! grep -Fq "$expected" "$work/error.log" &&
+       ! grep -Fq "$expected" "$work/output.log"; then
+        echo "FAIL: runtime error '$name' missed expected diagnostic" >&2
+        cat "$work/output.log" "$work/error.log" >&2
+        exit 1
+    fi
+    echo "PASS: runtime error '$name' was diagnosed"
+}
+
+expect_runtime_error "array-negative-index" "examples/array_bounds_negative.svx" "array index out of bounds"
+expect_runtime_error "array-upper-index" "examples/array_bounds_upper.svx" "array index out of bounds"
+
 expect_compile_error() {
     local name=$1
     local source=$2
