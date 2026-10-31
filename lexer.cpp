@@ -367,12 +367,16 @@ std::vector<Token> tokenize(const std::string& code) {
                 } else { add(LT, "<", tokLine, tokCol); ++i; ++column; }
                 continue;
             case '+':
-                if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
+                if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '+') {
+                    add(PLUS_PLUS, "++", tokLine, tokCol); ++i; ++column;
+                } else if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
                     add(PLUS_EQ, "+=", tokLine, tokCol); ++i; ++column;
                 } else add(PLUS, "+", tokLine, tokCol);
                 break;
             case '-':
-                if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
+                if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '-') {
+                    add(MINUS_MINUS, "--", tokLine, tokCol); ++i; ++column;
+                } else if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
                     add(MINUS_EQ, "-=", tokLine, tokCol); ++i; ++column;
                 } else add(MINUS, "-", tokLine, tokCol);
                 break;

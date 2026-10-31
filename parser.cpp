@@ -755,6 +755,36 @@ Node parseOne() {
         expect(SEMICOLON, "';'");
         return node;
     }
+    // Postfix increment/decrement.
+    if (isNameToken(peek().type) &&
+        (peek(1).type == PLUS_PLUS || peek(1).type == MINUS_MINUS)) {
+        Token name = consume();
+        Token operation = consume();
+        Node node; node.type = NODE_ASSIGN;
+        node.varName = name.value;
+        node.line = name.line;
+        node.column = name.column;
+        Node binary;
+        binary.type = NODE_BINOP;
+        binary.line = operation.line;
+        binary.column = operation.column;
+        binary.op = operation.type == PLUS_PLUS ? "+" : "-";
+        Node identifier;
+        identifier.type = NODE_IDENTIFIER;
+        identifier.value = name.value;
+        identifier.line = name.line;
+        identifier.column = name.column;
+        binary.left = makeNode(identifier);
+        Node one;
+        one.type = NODE_NUMBER;
+        one.value = "1";
+        one.line = operation.line;
+        one.column = operation.column;
+        binary.right = makeNode(one);
+        node.left = makeNode(binary);
+        expect(SEMICOLON);
+        return node;
+    }
     // Assignment and arithmetic compound assignment.
     if (isNameToken(peek().type) &&
         (peek(1).type == EQUALS || peek(1).type == PLUS_EQ ||
