@@ -1,0 +1,8 @@
+int value = 12;
+int combined = (value & 10) | (value ^ 3);
+int shifted = combined << 1;
+int result = ~shifted >> 2;
+print(combined);
+print(shifted);
+print(result);
+print(shifted >> 1);

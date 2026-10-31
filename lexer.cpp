@@ -359,11 +359,15 @@ std::vector<Token> tokenize(const std::string& code) {
             case '>':
                 if (i + 1 < (int)code.size() && code[i + 1] == '=') {
                     add(GE, ">=", tokLine, tokCol); i += 2; column += 2;
+                } else if (i + 1 < (int)code.size() && code[i + 1] == '>') {
+                    add(SHIFT_RIGHT, ">>", tokLine, tokCol); i += 2; column += 2;
                 } else { add(GT, ">", tokLine, tokCol); ++i; ++column; }
                 continue;
             case '<':
                 if (i + 1 < (int)code.size() && code[i + 1] == '=') {
                     add(LE, "<=", tokLine, tokCol); i += 2; column += 2;
+                } else if (i + 1 < (int)code.size() && code[i + 1] == '<') {
+                    add(SHIFT_LEFT, "<<", tokLine, tokCol); i += 2; column += 2;
                 } else { add(LT, "<", tokLine, tokCol); ++i; ++column; }
                 continue;
             case '+':
@@ -395,20 +399,20 @@ std::vector<Token> tokenize(const std::string& code) {
                     add(PERCENT_EQ, "%=", tokLine, tokCol); ++i; ++column;
                 } else add(PERCENT, "%", tokLine, tokCol);
                 break;
+            case '^': add(BIT_XOR, "^", tokLine, tokCol); break;
+            case '~': add(BIT_NOT, "~", tokLine, tokCol); break;
             case '&':
                 if (i + 1 < (int)code.size() && code[i + 1] == '&') {
                     add(AND_AND, "&&", tokLine, tokCol); i += 2; column += 2;
                     continue;
                 }
-                add(AMP, "&", tokLine, tokCol); break;
+                add(BIT_AND, "&", tokLine, tokCol); break;
             case '|':
                 if (i + 1 < (int)code.size() && code[i + 1] == '|') {
                     add(OR_OR, "||", tokLine, tokCol); i += 2; column += 2;
                     continue;
                 }
-                std::cerr << "Ошибка " << tokLine << ':' << tokCol
-                          << ": одиночный '|' не поддерживается; используйте '||'" << std::endl;
-                std::exit(1);
+                add(BIT_OR, "|", tokLine, tokCol); break;
             case ';': add(SEMICOLON, ";", tokLine, tokCol); break;
             case '(': add(LPAREN, "(", tokLine, tokCol); break;
             case ')': add(RPAREN, ")", tokLine, tokCol); break;

@@ -291,6 +291,14 @@ Node parsePrimary() {
 }
 
 Node parseUnary() {
+    if (peek().type == BIT_NOT) {
+        Token op = consume();
+        Node node; node.type = NODE_BINOP;
+        node.line = op.line; node.column = op.column;
+        node.op = "~";
+        node.left = makeNode(parseUnary());
+        return node;
+    }
     if (peek().type == BANG) {
         Token op = consume();
         Node node; node.type = NODE_BINOP;
@@ -361,6 +369,44 @@ Node parseAdd() {
     return left;
 }
 
+static Node makeBinary(Node left, const Token& op, Node right);
+
+Node parseShift() {
+    Node left = parseAdd();
+    while (peek().type == SHIFT_LEFT || peek().type == SHIFT_RIGHT) {
+        Token op = consume();
+        left = makeBinary(left, op, parseAdd());
+    }
+    return left;
+}
+
+Node parseBitAnd() {
+    Node left = parseShift();
+    while (peek().type == BIT_AND) {
+        Token op = consume();
+        left = makeBinary(left, op, parseShift());
+    }
+    return left;
+}
+
+Node parseBitXor() {
+    Node left = parseBitAnd();
+    while (peek().type == BIT_XOR) {
+        Token op = consume();
+        left = makeBinary(left, op, parseBitAnd());
+    }
+    return left;
+}
+
+Node parseBitOr() {
+    Node left = parseBitXor();
+    while (peek().type == BIT_OR) {
+        Token op = consume();
+        left = makeBinary(left, op, parseBitXor());
+    }
+    return left;
+}
+
 static Node makeBinary(Node left, const Token& op, Node right) {
     Node result;
     result.type = NODE_BINOP;
@@ -373,11 +419,11 @@ static Node makeBinary(Node left, const Token& op, Node right) {
 }
 
 Node parseCompare() {
-    Node left = parseAdd();
+    Node left = parseBitOr();
     while (peek().type == GT || peek().type == LT || peek().type == GE ||
            peek().type == LE || peek().type == EQ || peek().type == NEQ) {
         Token op = consume();
-        left = makeBinary(left, op, parseAdd());
+        left = makeBinary(left, op, parseBitOr());
     }
     return left;
 }

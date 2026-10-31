@@ -364,6 +364,14 @@ private:
                 error(node, "оператор ! ожидает bool или целое число");
             return "bool";
         }
+        if (node.op == "~") {
+            if (left == "<error>") return "<error>";
+            if (!isInteger(left)) {
+                error(node, "побитовая инверсия требует целочисленный операнд");
+                return "<error>";
+            }
+            return left;
+        }
         std::string right = node.right ? expression(*node.right) : std::string("<error>");
         const bool narrowUnsignedPromotion = isInteger(left) && isInteger(right) &&
             left[0] != right[0] &&
@@ -374,6 +382,24 @@ private:
         else if (!narrowUnsignedPromotion && node.right && fitsNumericLiteral(*node.right, left))
             right = left;
         if (left == "<error>" || right == "<error>") return "<error>";
+        if (node.op == "&" || node.op == "|" || node.op == "^" ||
+            node.op == "<<" || node.op == ">>") {
+            if (!isInteger(left) || !isInteger(right)) {
+                error(node, "побитовые операторы требуют целочисленные операнды");
+                return "<error>";
+            }
+            if ((node.op == "<<" || node.op == ">>") && node.right->type == NODE_NUMBER) {
+                try {
+                    const long long shift = std::stoll(node.right->value);
+                    const unsigned width = static_cast<unsigned>(std::stoi(left.substr(1)));
+                    if (shift < 0 || static_cast<unsigned long long>(shift) >= width) {
+                        error(*node.right, "счётчик сдвига должен быть меньше ширины левого операнда");
+                        return "<error>";
+                    }
+                } catch (...) {}
+            }
+            return left;
+        }
         if (node.op == "&&" || node.op == "||") {
             if ((left != "bool" && !isInteger(left)) ||
                 (right != "bool" && !isInteger(right)))

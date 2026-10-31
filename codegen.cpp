@@ -380,6 +380,8 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         llvm::Value* L = genExpr(*node.left);
         if (node.op == "!")
             return builder.CreateNot(toBool(L));
+        if (node.op == "~")
+            return builder.CreateNot(L);
         if (node.op == "&&" || node.op == "||") {
             llvm::Function* function = builder.GetInsertBlock()->getParent();
             llvm::BasicBlock* leftBlock = builder.GetInsertBlock();
@@ -430,6 +432,32 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         };
         if (L->getType() != common) L = extendToCommon(L, *node.left);
         if (R->getType() != common) R = extendToCommon(R, *node.right);
+        if (node.op == "&") return builder.CreateAnd(L, R);
+        if (node.op == "|") return builder.CreateOr(L, R);
+        if (node.op == "^") return builder.CreateXor(L, R);
+        if (node.op == "<<" || node.op == ">>") {
+            const unsigned width = common->getIntegerBitWidth();
+            llvm::Value* belowWidth = builder.CreateICmpULT(R, builder.getIntN(width, width));
+            llvm::Value* valid = belowWidth;
+            if (!isUnsignedExpr(*node.right)) {
+                llvm::Value* nonNegative = builder.CreateICmpSGE(R, builder.getIntN(width, 0));
+                valid = builder.CreateAnd(nonNegative, belowWidth);
+            }
+            llvm::Function* function = builder.GetInsertBlock()->getParent();
+            llvm::BasicBlock* validBlock = llvm::BasicBlock::Create(context, "shift_valid", function);
+            llvm::BasicBlock* trapBlock = llvm::BasicBlock::Create(context, "shift_invalid", function);
+            llvm::Function* abortFunction = module.getFunction("abort");
+            if (!abortFunction) abortFunction = llvm::Function::Create(
+                llvm::FunctionType::get(builder.getVoidTy(), false),
+                llvm::Function::ExternalLinkage, "abort", module);
+            builder.CreateCondBr(valid, validBlock, trapBlock);
+            builder.SetInsertPoint(trapBlock);
+            builder.CreateCall(abortFunction, {});
+            builder.CreateUnreachable();
+            builder.SetInsertPoint(validBlock);
+            if (node.op == "<<") return builder.CreateShl(L, R);
+            return isUnsignedExpr(*node.left) ? builder.CreateLShr(L, R) : builder.CreateAShr(L, R);
+        }
         if (node.op == "+") return builder.CreateAdd(L, R);
         if (node.op == "-") return builder.CreateSub(L, R);
         if (node.op == "*") return builder.CreateMul(L, R);
