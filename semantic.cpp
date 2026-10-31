@@ -382,6 +382,16 @@ private:
         else if (!narrowUnsignedPromotion && node.right && fitsNumericLiteral(*node.right, left))
             right = left;
         if (left == "<error>" || right == "<error>") return "<error>";
+        if (node.op == "//") {
+            if (!isInteger(left) || !isInteger(right)) {
+                error(node, "оператор // требует целочисленные операнды");
+                return "<error>";
+            }
+            if (left == "i64" || left == "u64" || right == "i64" || right == "u64")
+                return left[0] == 'u' && right[0] == 'u' ? "u64" : "i64";
+            if (left == "u32" || right == "u32") return "u32";
+            return "i32";
+        }
         if (node.op == "**") {
             if (!isInteger(left) && left != "f32" && left != "f64") {
                 error(node, "оператор ** требует числовые операнды");

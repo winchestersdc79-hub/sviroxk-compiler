@@ -26,11 +26,17 @@ std::vector<Token> tokenize(const std::string& code) {
             continue;
         }
         if (code[i] == '/' && i + 1 < (int)code.size() && code[i + 1] == '/') {
-            while (i < (int)code.size() && code[i] != '\n') {
-                ++i;
-                ++column;
+            const TokenType previous = tokens.empty() ? END : tokens.back().type;
+            const bool followsExpression = previous == NUMBER || previous == CHAR_LITERAL ||
+                previous == IDENTIFIER || previous == RPAREN || previous == RBRACKET ||
+                previous == TRUE_T || previous == FALSE_T;
+            if (!followsExpression) {
+                while (i < (int)code.size() && code[i] != '\n') {
+                    ++i;
+                    ++column;
+                }
+                continue;
             }
-            continue;
         }
         if (code[i] == '/' && i + 1 < (int)code.size() && code[i + 1] == '*') {
             const int commentLine = line;
@@ -394,6 +400,8 @@ std::vector<Token> tokenize(const std::string& code) {
             case '/':
                 if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
                     add(SLASH_EQ, "/=", tokLine, tokCol); ++i; ++column;
+                } else if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '/') {
+                    add(INTEGER_DIV, "//", tokLine, tokCol); ++i; ++column;
                 } else add(SLASH, "/", tokLine, tokCol);
                 break;
             case '%':

@@ -493,7 +493,7 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         if (node.op == "+") return builder.CreateAdd(L, R);
         if (node.op == "-") return builder.CreateSub(L, R);
         if (node.op == "*") return builder.CreateMul(L, R);
-        if (node.op == "/") return isUnsignedExpr(*node.left)
+        if (node.op == "/" || node.op == "//") return isUnsignedExpr(*node.left)
             ? builder.CreateUDiv(L, R) : builder.CreateSDiv(L, R);
         if (node.op == "%") return isUnsignedExpr(*node.left)
             ? builder.CreateURem(L, R) : builder.CreateSRem(L, R);

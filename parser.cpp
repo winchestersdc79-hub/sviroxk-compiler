@@ -350,7 +350,8 @@ Node parsePower() {
 
 Node parseMul() {
     Node left = parsePower();
-    while (peek().type == STAR || peek().type == SLASH || peek().type == PERCENT) {
+    while (peek().type == STAR || peek().type == SLASH ||
+           peek().type == INTEGER_DIV || peek().type == PERCENT) {
         std::string op = consume().value;
         Node* b = makeNode();
         b->type = NODE_BINOP;
