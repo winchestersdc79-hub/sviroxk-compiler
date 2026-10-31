@@ -6,6 +6,19 @@
 #include <cstdlib>
 #include <cmath>
 
+CodeGen::ScopeSnapshot CodeGen::saveScope() const {
+    return {vars, unsignedVars, charVars, integerWidths, arrays, arrayLengths};
+}
+
+void CodeGen::restoreScope(const ScopeSnapshot& scope) {
+    vars = scope.vars;
+    unsignedVars = scope.unsignedVars;
+    charVars = scope.charVars;
+    integerWidths = scope.integerWidths;
+    arrays = scope.arrays;
+    arrayLengths = scope.arrayLengths;
+}
+
 llvm::Value* CodeGen::getStringPtr(const std::string& str) {
     llvm::GlobalVariable* gv = builder.CreateGlobalString(str);
     return builder.CreateInBoundsGEP(gv->getValueType(), gv,
@@ -945,14 +958,17 @@ void CodeGen::genNode(const Node& node) {
         llvm::BasicBlock* mergeBlock =
             llvm::BasicBlock::Create(context, "merge", func);
         builder.CreateCondBr(cond, thenBlock, elseBlock);
+        const ScopeSnapshot parentScope = saveScope();
         builder.SetInsertPoint(thenBlock);
         for (const Node& n : node.children) genNode(n);
         if (!builder.GetInsertBlock()->hasTerminator())
             builder.CreateBr(mergeBlock);
+        restoreScope(parentScope);
         builder.SetInsertPoint(elseBlock);
         for (const Node& n : node.elseChildren) genNode(n);
         if (!builder.GetInsertBlock()->hasTerminator())
             builder.CreateBr(mergeBlock);
+        restoreScope(parentScope);
         builder.SetInsertPoint(mergeBlock);
     }
     else if (node.type == NODE_LOOP_N) {
@@ -979,9 +995,11 @@ void CodeGen::genNode(const Node& node) {
         llvm::Value* cond = builder.CreateICmpSLT(cur, count);
         builder.CreateCondBr(cond, bodyBlock, afterBlock);
         builder.SetInsertPoint(bodyBlock);
+        const ScopeSnapshot parentScope = saveScope();
         for (const Node& n : node.children) genNode(n);
         if (!builder.GetInsertBlock()->hasTerminator())
             builder.CreateBr(stepBlock);
+        restoreScope(parentScope);
         builder.SetInsertPoint(stepBlock);
         llvm::Value* next = builder.CreateAdd(cur, builder.getInt32(1));
         builder.CreateStore(next, i);
@@ -1007,9 +1025,11 @@ void CodeGen::genNode(const Node& node) {
         llvm::Value* cond = toBool(genExpr(*node.left));
         builder.CreateCondBr(cond, bodyBlock, afterBlock);
         builder.SetInsertPoint(bodyBlock);
+        const ScopeSnapshot parentScope = saveScope();
         for (const Node& n : node.children) genNode(n);
         if (!builder.GetInsertBlock()->hasTerminator())
             builder.CreateBr(condBlock);
+        restoreScope(parentScope);
         builder.SetInsertPoint(afterBlock);
         breakBlock = savedBreak;
         continueBlock = savedContinue;

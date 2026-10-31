@@ -9,6 +9,18 @@
 #include <string>
 
 class CodeGen {
+    struct ScopeSnapshot {
+        std::map<std::string, llvm::AllocaInst*> vars;
+        std::map<std::string, bool> unsignedVars;
+        std::map<std::string, bool> charVars;
+        std::map<std::string, unsigned> integerWidths;
+        std::map<std::string, llvm::AllocaInst*> arrays;
+        std::map<std::string, unsigned> arrayLengths;
+    };
+
+    ScopeSnapshot saveScope() const;
+    void restoreScope(const ScopeSnapshot& scope);
+
 public:
     llvm::LLVMContext context;
     llvm::IRBuilder<> builder;
