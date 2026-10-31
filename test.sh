@@ -39,6 +39,7 @@ sources=(
     "examples/casts.svx"
     "examples/operators.svx"
     "examples/string_replace.svx"
+    "examples/short_circuit.svx"
 )
 
 for source in "${sources[@]}"; do
@@ -161,6 +162,13 @@ for source in "${sources[@]}"; do
         expected=$'7\nlogical operators passed'
         if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
             echo "FAIL: loop/index/comparison/logical operator mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/short_circuit.svx" ]]; then
+        expected=$'short circuit passed'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: logical operators evaluated skipped operands" >&2
             cat "$work/output.txt" >&2
             exit 1
         fi

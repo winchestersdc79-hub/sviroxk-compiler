@@ -38,6 +38,7 @@ public:
 
     llvm::Type* svType(const std::string& name);
     llvm::Value* castTo(llvm::Value* val, llvm::Type* ty);
+    llvm::Value* toBool(llvm::Value* val);
     bool isUnsignedExpr(const Node& node) const;
     unsigned integerWidth(const Node& node) const;
     llvm::Value* genExpr(const Node& node);

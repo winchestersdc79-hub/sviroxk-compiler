@@ -593,11 +593,13 @@ private:
                 break;
             }
             std::string actual = expression(*node.left);
+            const std::string expectedReturnType = returnTypes_.back();
             bool fittingLiteral = node.left->type == NODE_NUMBER &&
-                literalFits(returnTypes_.back(), node.left->value);
-            if (node.left->type == NODE_NUMBER && !literalFits(returnTypes_.back(), node.left->value))
-                error(node, "числовой литерал возврата вне диапазона типа '" + typeName(returnTypes_.back()) + "'");
-            else if (actual != "<error>" && !compatible(returnTypes_.back(), actual) && !fittingLiteral)
+                isInteger(expectedReturnType) &&
+                literalFits(expectedReturnType, node.left->value);
+            if (node.left->type == NODE_NUMBER && isInteger(expectedReturnType) && !fittingLiteral)
+                error(node, "числовой литерал возврата вне диапазона типа '" + typeName(expectedReturnType) + "'");
+            else if (actual != "<error>" && !compatible(expectedReturnType, actual) && !fittingLiteral)
                 error(node, "функция должна вернуть '" + typeName(returnTypes_.back()) +
                       "', получено '" + typeName(actual) + "'");
             break;

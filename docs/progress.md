@@ -36,3 +36,11 @@
 - Обычный `./test.sh`: прошёл. ASan/UBSan + LeakSanitizer `detect_leaks=1`: прошёл.
 - OOM и размерный overflow в текущем generated code завершаются `abort`, не Result/diagnostic; semantics заменяет первое совпадение. Это документировано как остаточное ограничение.
 - Следующее: проверить и закоммитить текущую задачу, затем продолжить P0 аудит.
+
+## Цикл 4 — short-circuit логика
+- Baseline: `2c9fe7a`; до правки `&&`/`||` строились как eager `and/or`, то есть RHS с эффектами выполнялся всегда.
+- Добавлен `toBool` для integer/float truthy conversion и control-flow lowering через условную ветку и PHI: `false && rhs` пропускает RHS, `true || rhs` пропускает RHS.
+- Добавлен `examples/short_circuit.svx`, где RHS печатает маркер; тест ожидает только итоговую строку и тем самым подтверждает отсутствие обоих побочных эффектов.
+- Обычный `./test.sh`: прошёл. ASan/UBSan с warnings-as-errors и LeakSanitizer: прошёл.
+- Случайный сбой проверки оказался дублирующей строкой print в fixture, а не ошибкой CFG; дубликат удалён, stdout сравнивается точно.
+- Остаток: результат этой цепочки проверен; общий стресс-тест deeply nested logical CFG остаётся задачей conformance suite.

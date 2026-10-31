@@ -10,7 +10,7 @@
 - [ ] Bounds checks для доступных массивов; определить exit/diagnostic contract.
 
 ## P1 — зрелость compiler
-- [ ] CLI `--version`, `--help`, `--check`, output modes.
+- [x] Short-circuit evaluation для `&&`/`||` реализована через LLVM CFG; side-effect regression покрывает пропуск правого операнда.
 - [ ] Shared diagnostics с кодом, source excerpt/caret, recovery для нескольких parse errors.
 - [ ] Проверка definite assignment и return analysis для вложенных control-flow.
 - [ ] Корректность LLVM IR при ранних return, вложенных циклах, break/continue.

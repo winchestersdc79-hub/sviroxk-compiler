@@ -61,6 +61,17 @@ llvm::Value* CodeGen::castTo(llvm::Value* val, llvm::Type* ty) {
     return val;
 }
 
+llvm::Value* CodeGen::toBool(llvm::Value* value) {
+    if (value->getType()->isIntegerTy(1)) return value;
+    if (value->getType()->isIntegerTy())
+        return builder.CreateICmpNE(value, llvm::ConstantInt::get(value->getType(), 0));
+    if (value->getType()->isFloatingPointTy()) {
+        llvm::Constant* zero = llvm::ConstantFP::get(value->getType(), 0.0);
+        return builder.CreateFCmpONE(value, zero);
+    }
+    return builder.getFalse();
+}
+
 unsigned CodeGen::integerWidth(const Node& node) const {
     if (node.type == NODE_IDENTIFIER) {
         auto found = integerWidths.find(node.value);
@@ -284,18 +295,29 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
     }
     if (node.type == NODE_BINOP) {
         llvm::Value* L = genExpr(*node.left);
-        if (node.op == "!") {
-            if (L->getType()->isIntegerTy(1)) return builder.CreateNot(L);
-            return builder.CreateICmpEQ(L, llvm::ConstantInt::get(L->getType(), 0));
+        if (node.op == "!")
+            return builder.CreateNot(toBool(L));
+        if (node.op == "&&" || node.op == "||") {
+            llvm::Function* function = builder.GetInsertBlock()->getParent();
+            llvm::BasicBlock* leftBlock = builder.GetInsertBlock();
+            llvm::Value* left = toBool(L);
+            llvm::BasicBlock* rhsBlock = llvm::BasicBlock::Create(context, "logic_rhs", function);
+            llvm::BasicBlock* mergeBlock = llvm::BasicBlock::Create(context, "logic_merge", function);
+            if (node.op == "&&")
+                builder.CreateCondBr(left, rhsBlock, mergeBlock);
+            else
+                builder.CreateCondBr(left, mergeBlock, rhsBlock);
+            builder.SetInsertPoint(rhsBlock);
+            llvm::Value* right = toBool(genExpr(*node.right));
+            llvm::BasicBlock* rhsEnd = builder.GetInsertBlock();
+            if (!rhsEnd->hasTerminator()) builder.CreateBr(mergeBlock);
+            builder.SetInsertPoint(mergeBlock);
+            llvm::PHINode* result = builder.CreatePHI(builder.getInt1Ty(), 2, "logic_result");
+            result->addIncoming(node.op == "&&" ? builder.getFalse() : builder.getTrue(), leftBlock);
+            result->addIncoming(right, rhsEnd);
+            return result;
         }
         llvm::Value* R = genExpr(*node.right);
-        if (node.op == "&&" || node.op == "||") {
-            if (!L->getType()->isIntegerTy(1))
-                L = builder.CreateICmpNE(L, llvm::ConstantInt::get(L->getType(), 0));
-            if (!R->getType()->isIntegerTy(1))
-                R = builder.CreateICmpNE(R, llvm::ConstantInt::get(R->getType(), 0));
-            return node.op == "&&" ? builder.CreateAnd(L, R) : builder.CreateOr(L, R);
-        }
         bool isFloat = L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy();
         if (isFloat) {
             llvm::Type* common = L->getType()->isDoubleTy() || R->getType()->isDoubleTy()
@@ -858,9 +880,7 @@ void CodeGen::genNode(const Node& node) {
         }
     }
     else if (node.type == NODE_IF) {
-        llvm::Value* cond = genExpr(*node.left);
-        if (cond->getType()->isIntegerTy() && !cond->getType()->isIntegerTy(1))
-            cond = builder.CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0));
+        llvm::Value* cond = toBool(genExpr(*node.left));
         llvm::Function* func = builder.GetInsertBlock()->getParent();
         llvm::BasicBlock* thenBlock =
             llvm::BasicBlock::Create(context, "then", func);
@@ -925,9 +945,7 @@ void CodeGen::genNode(const Node& node) {
         continueBlock = condBlock;
         builder.CreateBr(condBlock);
         builder.SetInsertPoint(condBlock);
-        llvm::Value* cond = genExpr(*node.left);
-        if (cond->getType()->isIntegerTy() && !cond->getType()->isIntegerTy(1))
-            cond = builder.CreateICmpNE(cond, llvm::ConstantInt::get(cond->getType(), 0));
+        llvm::Value* cond = toBool(genExpr(*node.left));
         builder.CreateCondBr(cond, bodyBlock, afterBlock);
         builder.SetInsertPoint(bodyBlock);
         for (const Node& n : node.children) genNode(n);

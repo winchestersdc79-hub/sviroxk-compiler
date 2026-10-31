@@ -1,0 +1,11 @@
+// touch() prints when evaluated; short-circuit must skip both calls.
+fn bool touch(int value) {
+    print("right operand evaluated");
+    return true;
+}
+
+bool and_result = false && touch(1);
+bool or_result = true || touch(2);
+if (!and_result && or_result) {
+    print("short circuit passed");
+}
