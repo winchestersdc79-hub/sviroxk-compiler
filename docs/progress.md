@@ -11,6 +11,13 @@
 - Полный `./test.sh` под `-fsanitize=address,undefined`, `ASAN_OPTIONS=detect_leaks=1`: прошёл.
 - Следующее: завершить cleanup git-generated artifacts, затем CLI version/help, спецификацию реализованного синтаксиса и CI. Продолжить аудит UB/краевых случаев.
 
+## Раздел 1 — зрелость и стабильность (локальная проверка завершена)
+- Добавлены `sc --version`/`sc --help`, версия `0.3.0`, EBNF-описание реально поддержанного подмножества, совместимость экспериментальной версии и conformance fixtures.
+- Добавлен `.github/workflows/ci.yml`: LLVM install, `-Wall -Wextra -Werror`, suite, ASan/UBSan+LeakSanitizer. YAML parsed локально; GitHub Actions run пока не наблюдался.
+- `./build.sh && ./test.sh`: прошли; CLI, conformance positive/negative fixtures и общий suite зелёные.
+- `CXXFLAGS='-Wall -Wextra -Werror -fsanitize=address,undefined -fno-omit-frame-pointer' ASAN_OPTIONS=detect_leaks=1 ./test.sh`: прошёл.
+- Известное ограничение: диагностика пока без source excerpt/caret, parser останавливается на первой syntax error; warning deprecation policy описана, но механизм ещё отсутствует.
+
 ## Цикл 2 — memory ownership и scalar bounds
 - Baseline: `a0abc61`; обычные build/test прошли.
 - LeakSanitizer воспроизвёл утечку `Node*` в parser, включая binary-expression copies. Перевёл parser allocations на arena, владеющую узлами весь parse/compile lifetime.

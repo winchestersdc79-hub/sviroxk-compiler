@@ -20,8 +20,8 @@
 - [~] Math module: `math_abs` безопасно обрабатывает INT_MIN через i64 return; min/max/is_even принимают i64. Остальные math API ещё отсутствуют.
 - [ ] UTF-8 string representation and safe formatting.
 - [ ] `fs`/`io` errors and resource cleanup.
-- [ ] Sanitizer CI / warnings CI.
-- [ ] EBNF language spec, changelog, compatibility policy.
+- [~] GitHub Actions workflow добавлен для warnings, tests и sanitizers; проверить реальный remote run после push.
+- [~] EBNF implemented-subset spec, changelog, compatibility policy добавлены; завершить полную спецификацию и deprecation warning mechanism.
 
 ## P3 — долгосрочно
 - [ ] Typed aggregate storage (arrays/structs), safe typed pointers.
