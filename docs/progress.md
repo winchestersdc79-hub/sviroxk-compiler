@@ -44,3 +44,16 @@
 - Обычный `./test.sh`: прошёл. ASan/UBSan с warnings-as-errors и LeakSanitizer: прошёл.
 - Случайный сбой проверки оказался дублирующей строкой print в fixture, а не ошибкой CFG; дубликат удалён, stdout сравнивается точно.
 - Остаток: результат этой цепочки проверен; общий стресс-тест deeply nested logical CFG остаётся задачей conformance suite.
+
+## Цикл 5 — статические bounds checks
+- Подтверждено, что статические array reads/writes ранее не проверяли индекс до inbounds GEP.
+- Добавлена проверка отрицательного и `index >= length` для статических массивов с line/column runtime diagnostic и ненулевым exit.
+- Позитивный array-write и негативные `-1`/`length` примеры прошли обычный и ASan/UBSan suite.
+- Dynamic ptr arrays не хранят runtime length; их границы остаются непроверяемыми и задокументированы как ограничение.
+- Коммит: `9d9eb8a`.
+
+## Цикл 6 — текущая работа
+- Проверено состояние repo и backlog. Остались незакоммиченные `codegen.cpp`, `semantic.cpp`, `test.sh`, `examples/string_replace.svx` после предыдущего rep fix.
+- При очередной сборке выяснилось, что `build.sh` создаёт `sc` без executable permission; sanitizer runner спотыкался на status 126. Исправлено добавлением chmod на бинарник.
+- Подтверждены обычная и ASan/UBSan/LeakSanitizer сборки и тесты после исправления тестовой длины expected string.
+- Дальше: зафиксировать исправленный rep и build script; затем продолжить P0 audit, не теряя пользовательские изменения.
