@@ -729,9 +729,13 @@ Node parseOne() {
         expect(RBRACE);
         if (peek().type == SELE) {
             consume();
-            expect(LBRACE);
-            node.elseChildren = parseBlock();
-            expect(RBRACE);
+            if (peek().type == ELES) {
+                node.elseChildren.push_back(parseOne());
+            } else {
+                expect(LBRACE);
+                node.elseChildren = parseBlock();
+                expect(RBRACE);
+            }
         }
         if (peek().type == SEMICOLON) consume();
         return node;
