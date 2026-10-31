@@ -7,13 +7,14 @@
 
 static int pos = 0;
 static std::vector<Token> gtokens;
-static std::vector<std::unique_ptr<Node>> nodeArena;
+static std::shared_ptr<std::vector<std::unique_ptr<Node>>> nodeArena =
+    std::make_shared<std::vector<std::unique_ptr<Node>>>();
 
 template <typename... Args>
 static Node* makeNode(Args&&... args) {
     auto node = std::make_unique<Node>(std::forward<Args>(args)...);
     Node* result = node.get();
-    nodeArena.push_back(std::move(node));
+    nodeArena->push_back(std::move(node));
     return result;
 }
 
@@ -827,11 +828,12 @@ Node parseOne() {
 }
 
 Node parse(const std::vector<Token>& tokens) {
-    nodeArena.clear();
+    nodeArena = std::make_shared<std::vector<std::unique_ptr<Node>>>();
     gtokens = tokens;
     pos = 0;
     Node program;
     program.type = NODE_PROGRAM;
+    program.arena = nodeArena;
     while (peek().type != END) {
         if (peek().type == IMP) {
             consume();

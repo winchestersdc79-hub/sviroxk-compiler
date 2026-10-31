@@ -2,6 +2,7 @@
 #define PARSER_H
 
 #include "lexer.h"
+#include <memory>
 #include <vector>
 
 enum NodeType {
@@ -60,6 +61,7 @@ struct Node {
     std::vector<Node> elseChildren;
     std::vector<Node> args;
     std::vector<std::string> params;
+    std::shared_ptr<std::vector<std::unique_ptr<Node>>> arena;
 };
 
 Node parse(const std::vector<Token>& tokens);
