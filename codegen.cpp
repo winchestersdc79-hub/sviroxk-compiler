@@ -25,20 +25,20 @@ llvm::Type* CodeGen::svType(const std::string& name) {
     return builder.getInt32Ty();
 }
 
-llvm::Value* CodeGen::castTo(llvm::Value* val, llvm::Type* ty) {
+llvm::Value* CodeGen::castTo(llvm::Value* val, llvm::Type* ty, bool sourceUnsigned) {
     if (!val || !ty) return val;
     if (val->getType() == ty) return val;
     if (ty->isFloatingPointTy() && val->getType()->isIntegerTy(1))
         return builder.CreateUIToFP(val, ty);
     if (ty->isFloatingPointTy() && val->getType()->isIntegerTy())
-        return builder.CreateSIToFP(val, ty);
+        return sourceUnsigned ? builder.CreateUIToFP(val, ty) : builder.CreateSIToFP(val, ty);
     if (ty->isFloatTy() && val->getType()->isDoubleTy())
         return builder.CreateFPTrunc(val, ty);
     if (ty->isDoubleTy() && val->getType()->isFloatTy())
         return builder.CreateFPExt(val, ty);
     if (ty->isIntegerTy() && val->getType()->isIntegerTy() &&
         ty->getIntegerBitWidth() > val->getType()->getIntegerBitWidth()) {
-        if (val->getType()->isIntegerTy(1) || ty->getIntegerBitWidth() == 1)
+        if (val->getType()->isIntegerTy(1) || ty->getIntegerBitWidth() == 1 || sourceUnsigned)
             return builder.CreateZExt(val, ty);
         return builder.CreateSExt(val, ty);
     }
@@ -688,7 +688,7 @@ void CodeGen::genNode(const Node& node) {
         llvm::AllocaInst* alloca =
             builder.CreateAlloca(ty, nullptr, node.varName);
         llvm::Value* val = genExpr(*node.left);
-        val = castTo(val, ty);
+        val = castTo(val, ty, isUnsignedExpr(*node.left));
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
         unsignedVars[node.varName] = node.varType == "u8" || node.varType == "u16" ||
@@ -701,7 +701,7 @@ void CodeGen::genNode(const Node& node) {
         if (alloca) {
             llvm::Value* val = genExpr(*node.left);
             llvm::Type* ty = alloca->getAllocatedType();
-            val = castTo(val, ty);
+            val = castTo(val, ty, isUnsignedExpr(*node.left));
             builder.CreateStore(val, alloca);
         }
     }
@@ -743,7 +743,7 @@ void CodeGen::genNode(const Node& node) {
             builder.CreateRetVoid();
         } else if (node.left) {
             llvm::Value* v = genExpr(*node.left);
-            builder.CreateRet(castTo(v, retTy));
+            builder.CreateRet(castTo(v, retTy, isUnsignedExpr(*node.left)));
         }
     }
     else if (node.type == NODE_BREAK) {

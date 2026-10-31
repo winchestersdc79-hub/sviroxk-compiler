@@ -152,12 +152,17 @@ private:
     bool compatible(const std::string& expectedRaw, const std::string& actualRaw) const {
         std::string expected = normalize(expectedRaw);
         std::string actual = normalize(actualRaw);
-        if (expected == actual || (expected == "char" && actual == "u8") ||
-            ((expected == "f32" || expected == "f64") &&
-             (actual == "i8" || actual == "i16" || actual == "i32" || actual == "i64" ||
-              actual == "u8" || actual == "u16" || actual == "u32" || actual == "u64")) ||
-            (expected == "i64" && (actual == "i8" || actual == "i16" || actual == "i32")) ||
-            (expected == "u64" && (actual == "u8" || actual == "u16" || actual == "u32"))) return true;
+        if (expected == actual || (expected == "char" && actual == "u8")) return true;
+        if (expected == "f64" && actual == "f32") return true;
+        if (isInteger(expected) && isInteger(actual)) {
+            const unsigned expectedBits = static_cast<unsigned>(std::stoi(expected.substr(1)));
+            const unsigned actualBits = static_cast<unsigned>(std::stoi(actual.substr(1)));
+            const bool expectedUnsigned = expected[0] == 'u';
+            const bool actualUnsigned = actual[0] == 'u';
+            if (expectedBits > actualBits && expectedUnsigned == actualUnsigned) return true;
+            if (!expectedUnsigned && actualUnsigned && expectedBits > actualBits) return true;
+        }
+        if ((expected == "f32" || expected == "f64") && isInteger(actual)) return true;
         return false;
     }
 

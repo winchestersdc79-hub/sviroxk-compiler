@@ -38,7 +38,7 @@ public:
     llvm::Value* getStringPtr(const std::string& str);
 
     llvm::Type* svType(const std::string& name);
-    llvm::Value* castTo(llvm::Value* val, llvm::Type* ty);
+    llvm::Value* castTo(llvm::Value* val, llvm::Type* ty, bool sourceUnsigned = false);
     llvm::Value* toBool(llvm::Value* val);
     void emitArrayBoundsCheck(llvm::Value* index, unsigned length, const Node& location);
     bool isUnsignedExpr(const Node& node) const;

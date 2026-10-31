@@ -1,0 +1,11 @@
+i8 small_signed = 12;
+i16 signed_wide = small_signed;
+u8 small_unsigned = 200;
+u16 unsigned_wide = small_unsigned;
+i16 signed_from_unsigned = small_unsigned;
+f32 precise = 1.5;
+f64 wider_float = precise;
+print(signed_wide);
+print(unsigned_wide);
+print(signed_from_unsigned);
+print(wider_float);
