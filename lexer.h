@@ -6,7 +6,7 @@
 
 enum TokenType {
     // Переменные
-    SVI, LOR, LET, CONST_T, FOR_T, IN_T, RANGE, RANGE_EQ, COLON,
+    SVI, LOR, LET, CONST_T, FOR_T, WHILE_T, IN_T, RANGE, RANGE_EQ, COLON,
     // Типы
     ROX, DOR, COS, BUE, VOID_T, FIXED_TYPE,
     // Условия

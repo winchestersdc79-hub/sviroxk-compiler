@@ -764,6 +764,19 @@ Node parseOne() {
         expect(SEMICOLON);
         return node;
     }
+    if (peek().type == WHILE_T) {
+        Token token = consume();
+        Node node; node.type = NODE_WHILE;
+        node.line = token.line;
+        node.column = token.column;
+        expect(LPAREN);
+        node.left = makeNode(parseExpr());
+        expect(RPAREN);
+        expect(LBRACE);
+        node.children = parseBlock();
+        expect(RBRACE);
+        return node;
+    }
     // Range loop: for index in start..end { ... } / start..=end.
     if (peek().type == FOR_T) {
         Token forToken = consume();

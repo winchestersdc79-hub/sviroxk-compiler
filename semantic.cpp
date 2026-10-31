@@ -770,7 +770,8 @@ private:
             --loopDepth_;
             break;
         }
-        case NODE_LOOP_W: {
+        case NODE_LOOP_W:
+        case NODE_WHILE: {
             std::string condition = expression(*node.left);
             if (condition != "bool" && !isInteger(condition) && condition != "<error>") error(*node.left, "условие цикла должно быть bool или int");
             ++loopDepth_;

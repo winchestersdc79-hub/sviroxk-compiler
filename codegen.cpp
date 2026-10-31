@@ -1091,7 +1091,7 @@ void CodeGen::genNode(const Node& node) {
         breakBlock = savedBreak;
         continueBlock = savedContinue;
     }
-    else if (node.type == NODE_LOOP_W) {
+    else if (node.type == NODE_LOOP_W || node.type == NODE_WHILE) {
         llvm::Function* func = builder.GetInsertBlock()->getParent();
         llvm::BasicBlock* condBlock =
             llvm::BasicBlock::Create(context, "cond", func);
