@@ -77,7 +77,6 @@ private:
     std::vector<std::map<std::string, Symbol>> scopes_;
     std::map<std::string, Function> functions_;
     std::map<std::string, const Node*> structs_;
-    std::map<std::string, std::string> structFields_;
     std::vector<std::string> returnTypes_;
     unsigned loopDepth_ = 0;
 
@@ -627,20 +626,17 @@ private:
             if (position < positional.size()) error(node, "слишком много позиционных значений структуры");
             declare(node.varName, node.varType, node);
             for (const Node& field : structure->second->children)
-                declare(node.varName + "_" + field.varName, field.varType, node);
+                declare(node.varName + "." + field.varName, field.varType, node);
             break;
         }
         case NODE_ASSIGN: {
             const Symbol* symbol = lookup(node.varName);
             if (!symbol) {
-                auto field = structFields_.find(node.varName);
-                if (field == structFields_.end()) {
-                    error(node, "присваивание неизвестному имени '" + node.varName + "'");
-                    expression(*node.left);
-                    break;
-                }
+                error(node, "присваивание неизвестному имени '" + node.varName + "'");
+                expression(*node.left);
+                break;
             }
-            std::string expected = symbol ? symbol->type : structFields_[node.varName];
+            std::string expected = symbol->type;
             std::string actual = expression(*node.left);
             bool literalArithmeticFits = false;
             if (symbol && node.left->type == NODE_BINOP &&

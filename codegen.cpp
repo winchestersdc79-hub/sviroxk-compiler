@@ -177,7 +177,7 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
     if (node.type == NODE_STRING)
         return getStringPtr(node.value);
     if (node.type == NODE_STRUCT_FIELD) {
-        std::string key = node.varName + "_" + node.op;
+        std::string key = node.varName + "." + node.op;
         llvm::AllocaInst* alloca = vars[key];
         if (alloca) {
             llvm::Type* ty = alloca->getAllocatedType();
@@ -844,7 +844,7 @@ void CodeGen::genNode(const Node& node) {
         }
         size_t pi = 0;
         for (const StructField& f : fields) {
-            std::string full = node.varName + "_" + f.name;
+            std::string full = node.varName + "." + f.name;
             llvm::Type* ty = svType(f.type);
             llvm::AllocaInst* alloca =
                 builder.CreateAlloca(ty, nullptr, full);

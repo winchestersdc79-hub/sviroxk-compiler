@@ -679,7 +679,7 @@ Node parseOne() {
         std::string field = consume().value;
         Node node;
         node.type = NODE_ASSIGN;
-        node.varName = inst + "_" + field;
+        node.varName = inst + "." + field;
         expect(EQUALS);
         node.left = makeNode(parseExpr());
         expect(SEMICOLON);
