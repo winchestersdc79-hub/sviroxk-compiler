@@ -737,10 +737,11 @@ void CodeGen::genNode(const Node& node) {
         }
     }
     else if (node.type == NODE_VAR_DECL) {
-        llvm::Type* ty = svType(node.varType);
+        llvm::Value* val = genExpr(*node.left);
+        llvm::Type* ty = node.varType.empty()
+            ? val->getType() : svType(node.varType);
         llvm::AllocaInst* alloca =
             builder.CreateAlloca(ty, nullptr, node.varName);
-        llvm::Value* val = genExpr(*node.left);
         val = castTo(val, ty, isUnsignedExpr(*node.left));
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;

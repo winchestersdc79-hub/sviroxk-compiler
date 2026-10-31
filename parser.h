@@ -49,7 +49,7 @@ enum NodeType {
 struct Node {
     NodeType type;
     std::string value;
-    std::string varType;
+    mutable std::string varType;
     std::string varName;
     std::string op;
     int line = 1;

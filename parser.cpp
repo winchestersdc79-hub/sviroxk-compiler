@@ -426,11 +426,13 @@ Node parseOne() {
         if (!isNameToken(nameToken.type))
             failAt(nameToken, "ожидалось имя переменной");
         node.varName = consume().value;
-        expect(COLON);
-        Token typeToken = consume();
-        if (!isTypeName(typeToken.value))
-            failAt(typeToken, "неизвестный тип '" + typeToken.value + "'");
-        node.varType = canonicalType(typeToken.value);
+        if (peek().type == COLON) {
+            consume();
+            Token typeToken = consume();
+            if (!isTypeName(typeToken.value))
+                failAt(typeToken, "неизвестный тип '" + typeToken.value + "'");
+            node.varType = canonicalType(typeToken.value);
+        }
         expect(EQUALS);
         node.left = makeNode(parseExpr());
         expect(SEMICOLON);

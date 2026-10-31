@@ -575,21 +575,24 @@ private:
     void checkNode(const Node& node) {
         switch (node.type) {
         case NODE_VAR_DECL: {
-            if (!knownType(node.varType)) error(node, "неизвестный тип переменной '" + node.varType + "'");
+            const bool inferType = node.varType.empty();
+            if (!inferType && !knownType(node.varType)) error(node, "неизвестный тип переменной '" + node.varType + "'");
             const std::string declaredType = normalize(node.varType);
             const bool contextualIntegerLiteral = node.left->type == NODE_NUMBER &&
                 node.left->varType.empty() &&
                 node.left->value.find_first_of(".eE") == std::string::npos &&
                 isInteger(declaredType);
             std::string actual = contextualIntegerLiteral ? declaredType : expression(*node.left);
+            const std::string effectiveType = inferType ? actual : declaredType;
+            if (inferType && actual != "<error>") node.varType = actual;
             const bool numericLiteral = node.left->type == NODE_NUMBER &&
-                (isInteger(declaredType) || declaredType == "f32" || declaredType == "f64");
-            const bool literalInRange = numericLiteral && literalFits(declaredType, node.left->value);
+                (isInteger(effectiveType) || effectiveType == "f32" || effectiveType == "f64");
+            const bool literalInRange = numericLiteral && literalFits(effectiveType, node.left->value);
             if (numericLiteral && !literalInRange) {
-                error(*node.left, "числовой литерал вне диапазона типа '" + typeName(declaredType) + "'");
-            } else if (actual != "<error>" && !compatible(node.varType, actual) && !literalInRange) {
+                error(*node.left, "числовой литерал вне диапазона типа '" + typeName(effectiveType) + "'");
+            } else if (!inferType && actual != "<error>" && !compatible(node.varType, actual) && !literalInRange) {
                 error(node, "переменная '" + node.varName + "' имеет тип '" +
-                      typeName(declaredType) + "', но инициализируется значением типа '" +
+                      typeName(effectiveType) + "', но инициализируется значением типа '"+
                       typeName(actual) + "'");
             }
             declare(node.varName, node.varType, node);
