@@ -619,12 +619,18 @@ private:
         case NODE_RETURN: {
             if (returnTypes_.empty()) {
                 error(node, "return разрешён только внутри функции");
-                expression(*node.left);
+                if (node.left) expression(*node.left);
                 break;
             }
             if (returnTypes_.back() == "void") {
-                error(node, "процедура без типа результата не может возвращать значение");
-                expression(*node.left);
+                if (node.left) {
+                    error(node, "процедура без типа результата не может возвращать значение");
+                    expression(*node.left);
+                }
+                break;
+            }
+            if (!node.left) {
+                error(node, "функция с результатом должна вернуть значение");
                 break;
             }
             std::string actual = expression(*node.left);

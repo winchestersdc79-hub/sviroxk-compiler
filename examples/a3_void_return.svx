@@ -1,0 +1,5 @@
+fn void finish() {
+    return;
+}
+finish();
+print(1);

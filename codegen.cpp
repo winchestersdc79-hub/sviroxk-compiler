@@ -728,10 +728,14 @@ void CodeGen::genNode(const Node& node) {
         }
     }
     else if (node.type == NODE_RETURN) {
-        llvm::Value* v = genExpr(*node.left);
         llvm::Function* cur = builder.GetInsertBlock()->getParent();
         llvm::Type* retTy = cur->getReturnType();
-        builder.CreateRet(castTo(v, retTy));
+        if (retTy->isVoidTy()) {
+            builder.CreateRetVoid();
+        } else if (node.left) {
+            llvm::Value* v = genExpr(*node.left);
+            builder.CreateRet(castTo(v, retTy));
+        }
     }
     else if (node.type == NODE_BREAK) {
         if (breakBlock) builder.CreateBr(breakBlock);

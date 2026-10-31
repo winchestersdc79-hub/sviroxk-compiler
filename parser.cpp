@@ -547,7 +547,8 @@ Node parseOne() {
         Node node; node.type = NODE_RETURN;
         node.line = peek().line; node.column = peek().column;
         consume();
-        node.left = makeNode(parseExpr());
+        if (peek().type != SEMICOLON)
+            node.left = makeNode(parseExpr());
         expect(SEMICOLON);
         return node;
     }
