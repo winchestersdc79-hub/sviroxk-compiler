@@ -15,6 +15,7 @@ public:
     llvm::Module module;
     std::map<std::string, llvm::AllocaInst*> vars;
     std::map<std::string, bool> unsignedVars;
+    std::map<std::string, bool> charVars;
     std::map<std::string, unsigned> integerWidths;
     std::map<std::string, llvm::AllocaInst*> arrays;
     std::map<std::string, unsigned> arrayLengths;

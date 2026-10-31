@@ -36,7 +36,7 @@ enum TokenType {
     // Сравнения
     GT, LT, EQ, NEQ,
     // Значения
-    NUMBER, STRING, IDENTIFIER,
+    NUMBER, STRING, CHAR_LITERAL, IDENTIFIER,
     END
 };
 

@@ -7,6 +7,7 @@
 enum NodeType {
     NODE_VAR_DECL,
     NODE_NUMBER,
+    NODE_CHAR,
     NODE_STRING,
     NODE_IDENTIFIER,
     NODE_SLOV,

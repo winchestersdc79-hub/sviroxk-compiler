@@ -180,7 +180,7 @@ std::vector<Token> tokenize(const std::string& code) {
             }
             ++i;
             ++column;
-            add(NUMBER, std::to_string(charVal), tokLine, tokCol);
+            add(CHAR_LITERAL, std::to_string(charVal), tokLine, tokCol);
             continue;
         }
         if (code[i] == '"') {

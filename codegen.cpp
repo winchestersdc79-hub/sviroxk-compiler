@@ -130,6 +130,9 @@ bool CodeGen::isUnsignedExpr(const Node& node) const {
 }
 
 llvm::Value* CodeGen::genExpr(const Node& node) {
+    if (node.type == NODE_CHAR) {
+        return builder.getInt8(static_cast<uint8_t>(std::stoul(node.value)));
+    }
     if (node.type == NODE_NUMBER) {
         if (node.value.find_first_of(".eE") != std::string::npos) {
             size_t parsed = 0;
@@ -651,6 +654,11 @@ void CodeGen::genNode(const Node& node) {
             } else if (val->getType()->isDoubleTy()) {
                 llvm::Value* fmt = getStringPtr("%f\n");
                 builder.CreateCall(printfFunc, {fmt, val});
+            } else if (node.left->type == NODE_IDENTIFIER &&
+                       charVars.count(node.left->value) && charVars[node.left->value]) {
+                llvm::Value* promoted = builder.CreateZExt(val, builder.getInt32Ty());
+                llvm::Value* fmt = getStringPtr("%c\n");
+                builder.CreateCall(printfFunc, {fmt, promoted});
             } else if (val->getType()->isIntegerTy() &&
                        val->getType()->getIntegerBitWidth() < 32) {
                 const bool isUnsigned = node.left->type == NODE_IDENTIFIER &&
@@ -684,7 +692,8 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
         unsignedVars[node.varName] = node.varType == "u8" || node.varType == "u16" ||
-            node.varType == "u32" || node.varType == "u64";
+            node.varType == "u32" || node.varType == "u64" || node.varType == "char";
+        charVars[node.varName] = node.varType == "char";
         integerWidths[node.varName] = ty->isIntegerTy() ? ty->getIntegerBitWidth() : 32;
     }
     else if (node.type == NODE_ASSIGN) {
@@ -820,6 +829,7 @@ void CodeGen::genNode(const Node& node) {
         llvm::BasicBlock* savedBlock = builder.GetInsertBlock();
         auto savedVars = vars;
         auto savedUnsignedVars = unsignedVars;
+        auto savedCharVars = charVars;
         auto savedIntegerWidths = integerWidths;
         auto savedArrays = arrays;
         auto savedArrayLengths = arrayLengths;
@@ -837,7 +847,8 @@ void CodeGen::genNode(const Node& node) {
             builder.CreateStore(&arg, alloca);
             vars[pname] = alloca;
             unsignedVars[pname] = ptype == "u8" || ptype == "u16" ||
-                ptype == "u32" || ptype == "u64";
+                ptype == "u32" || ptype == "u64" || ptype == "char";
+            charVars[pname] = ptype == "char";
             integerWidths[pname] = ty->isIntegerTy() ? ty->getIntegerBitWidth() : 32;
         }
         bool hasRet = false;
@@ -858,6 +869,7 @@ void CodeGen::genNode(const Node& node) {
         builder.SetInsertPoint(savedBlock);
         vars = savedVars;
         unsignedVars = savedUnsignedVars;
+        charVars = savedCharVars;
         integerWidths = savedIntegerWidths;
         arrays = savedArrays;
         arrayLengths = savedArrayLengths;

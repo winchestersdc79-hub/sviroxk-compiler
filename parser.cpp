@@ -219,6 +219,11 @@ Node parsePrimary() {
         left.value = t.value;
         left.varType.clear();
     }
+    else if (t.type == CHAR_LITERAL) {
+        left.type = NODE_CHAR;
+        left.value = t.value;
+        left.varType = "char";
+    }
     else if (t.type == STRING) { left.type = NODE_STRING; left.value = t.value; left.varType = "cos"; }
     else if (t.type == COP) {
         left.type = NODE_FUNC_CALL;

@@ -152,7 +152,7 @@ private:
     bool compatible(const std::string& expectedRaw, const std::string& actualRaw) const {
         std::string expected = normalize(expectedRaw);
         std::string actual = normalize(actualRaw);
-        if (expected == actual ||
+        if (expected == actual || (expected == "char" && actual == "u8") ||
             ((expected == "f32" || expected == "f64") &&
              (actual == "i8" || actual == "i16" || actual == "i32" || actual == "i64" ||
               actual == "u8" || actual == "u16" || actual == "u32" || actual == "u64")) ||
@@ -202,6 +202,8 @@ private:
             }
             return literalType;
         }
+        case NODE_CHAR:
+            return "u8";
         case NODE_STRING:
             return "str";
         case NODE_IDENTIFIER: {
@@ -246,7 +248,7 @@ private:
         case NODE_CAST: {
             std::string target = normalize(node.varType);
             std::string source = expression(*node.left);
-            const std::set<std::string> numeric = {"i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64"};
+            const std::set<std::string> numeric = {"i8", "i16", "i32", "i64", "u8", "u16", "u32", "u64", "f32", "f64", "char"};
             if (!knownType(target))
                 error(node, "неизвестный тип преобразования '" + node.varType + "'");
             else if (!numeric.count(target) || !numeric.count(source))
