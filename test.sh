@@ -38,6 +38,7 @@ sources=(
     "examples/stdlib_abs_min.svx"
     "examples/casts.svx"
     "examples/operators.svx"
+    "examples/string_replace.svx"
 )
 
 for source in "${sources[@]}"; do
@@ -163,6 +164,18 @@ for source in "${sources[@]}"; do
             cat "$work/output.txt" >&2
             exit 1
         fi
+    elif [[ "$source" == "examples/string_replace.svx" ]]; then
+        long_base=""
+        for ((repeat = 0; repeat < 20; repeat++)); do
+            long_base+="abcdefghijklmnopqrstuvwxyz"
+        done
+        expected=$'before FOUND after\nplain text\n'"${long_base/nop/replacement}"$'\n'"${long_base/mnop/WXYZ}"
+        printf '%s\n' "$expected" > "$work/expected.txt"
+        if ! cmp -s "$work/output.txt" "$work/expected.txt"; then
+            echo "FAIL: string replacement result mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
     fi
     cat "$work/output.txt"
 done
@@ -200,6 +213,7 @@ expect_compile_error "unexpected-character" 'print(1 ! 2);'
 expect_compile_error "unterminated-string" 'print("unfinished);'
 expect_compile_error "unknown-variable" 'print(not_declared);'
 expect_compile_error "unknown-function" 'let result: int = missing(1);'
+expect_compile_error "rep-requires-strings" 'let bad: ptr = rep("text", 4, "x");'
 expect_compile_error "math-abs-out-of-range-argument" "imp \"$PWD/stdlib/math/math.svx\"; let result: long = math_abs(2147483648);"
 expect_compile_error "wrong-argument-type" 'fn twice(int value) { return value * 2; } let result: int = twice("text");'
 expect_compile_error "wrong-return-type" 'fn wrong() { return "text"; }'

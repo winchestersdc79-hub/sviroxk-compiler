@@ -4,7 +4,7 @@
 
 ## P0 — корректность/безопасность
 - [ ] Убрать глобальное состояние parser и сделать AST ownership безопасным при копировании Node (arena пока локальный workaround).
-- [ ] Усилить ASan/UBSan на array/pointer/file/memory runtime cases; добавить проверки утечек.
+- [~] ASan/UBSan LeakSanitizer проверяет parser arena и heap result `rep`; расширить runtime safety тесты на array/pointer/file/memory.
 - [ ] Исправить все compiler warnings под `-Wall -Wextra -Werror`.
 - [~] Прямые numeric literals во всех expression contexts проверяются до codegen. Остаются checked casts для вычисляемых значений и точное signed/unsigned conversion semantics.
 - [ ] Bounds checks для доступных массивов; определить exit/diagnostic contract.

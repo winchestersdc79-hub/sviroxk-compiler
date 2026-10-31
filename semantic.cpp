@@ -377,14 +377,21 @@ private:
                       std::to_string(builtin->second.first) + " аргументов, получено " +
                       std::to_string(node.args.size()));
             }
-            for (const Node& arg : node.args) {
+            for (size_t index = 0; index < node.args.size(); ++index) {
+                const Node& arg = node.args[index];
                 std::string type = expression(arg);
-                if (!isInteger(type) && type != "f32" && type != "f64" && type != "char" && type != "str" && type != "<error>")
+                if (node.varName == "rep") {
+                    if (type != "str" && type != "<error>")
+                        error(arg, "аргумент " + std::to_string(index + 1) + " rep должен иметь тип str");
+                } else if (!isInteger(type) && type != "f32" && type != "f64" &&
+                           type != "char" && type != "str" && type != "<error>") {
                     error(arg, "недопустимый тип аргумента функции '" + node.varName + "'");
+                }
             }
             if (node.varName == "ser") return "bool";
             if (node.varName == "ar" || node.varName == "ran" || node.varName == "abs" || node.varName == "pow") return "i32";
-            if (node.varName == "str" || node.varName == "rep") return "str";
+            if (node.varName == "str") return "str";
+            if (node.varName == "rep") return "ptr";
             if (node.varName == "sqrt" || node.varName == "flo" || node.varName == "cel" || node.varName == "ron") return "i32";
             if (!node.args.empty()) return expression(node.args[0]);
             return "i32";

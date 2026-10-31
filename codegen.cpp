@@ -416,46 +416,112 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             llvm::Value* res = builder.CreateCall(strcmpF, {s1, s2});
             return builder.CreateICmpEQ(res, builder.getInt32(0));
         }
-        if (name == "rep" && node.args.size() >= 3) {
+        if (name == "rep" && node.args.size() == 3) {
+            llvm::FunctionType* strlenType = llvm::FunctionType::get(
+                builder.getInt64Ty(), {builder.getPtrTy()}, false);
+            llvm::Function* strlenF = module.getFunction("strlen");
+            if (!strlenF) strlenF = llvm::Function::Create(strlenType,
+                llvm::Function::ExternalLinkage, "strlen", module);
             llvm::FunctionType* strstrType = llvm::FunctionType::get(
-                builder.getPtrTy(),
-                {builder.getPtrTy(), builder.getPtrTy()}, false);
+                builder.getPtrTy(), {builder.getPtrTy(), builder.getPtrTy()}, false);
             llvm::Function* strstrF = module.getFunction("strstr");
             if (!strstrF) strstrF = llvm::Function::Create(strstrType,
                 llvm::Function::ExternalLinkage, "strstr", module);
-            llvm::FunctionType* strcpyType = llvm::FunctionType::get(
-                builder.getPtrTy(),
-                {builder.getPtrTy(), builder.getPtrTy()}, false);
-            llvm::Function* strcpyF = module.getFunction("strcpy");
-            if (!strcpyF) strcpyF = llvm::Function::Create(strcpyType,
-                llvm::Function::ExternalLinkage, "strcpy", module);
-            llvm::FunctionType* strcatType = llvm::FunctionType::get(
-                builder.getPtrTy(),
-                {builder.getPtrTy(), builder.getPtrTy()}, false);
-            llvm::Function* strcatF = module.getFunction("strcat");
-            if (!strcatF) strcatF = llvm::Function::Create(strcatType,
-                llvm::Function::ExternalLinkage, "strcat", module);
-            llvm::Value* hay = genExpr(node.args[0]);
-            llvm::Value* oldv = genExpr(node.args[1]);
-            llvm::Value* newv = genExpr(node.args[2]);
-            llvm::AllocaInst* out = builder.CreateAlloca(
-                llvm::ArrayType::get(builder.getInt8Ty(), 512), nullptr, "repbuf");
-            llvm::Value* outPtr = builder.CreateInBoundsGEP(
-                llvm::ArrayType::get(builder.getInt8Ty(), 512), out,
-                {builder.getInt32(0), builder.getInt32(0)});
-            builder.CreateCall(strcpyF, {outPtr, hay});
-            llvm::Value* pos = builder.CreateCall(strstrF, {outPtr, oldv});
+            llvm::FunctionType* memcpyType = llvm::FunctionType::get(
+                builder.getPtrTy(), {builder.getPtrTy(), builder.getPtrTy(), builder.getInt64Ty()}, false);
+            llvm::Function* memcpyF = module.getFunction("memcpy");
+            if (!memcpyF) memcpyF = llvm::Function::Create(memcpyType,
+                llvm::Function::ExternalLinkage, "memcpy", module);
+            llvm::FunctionType* mallocType = llvm::FunctionType::get(
+                builder.getPtrTy(), {builder.getInt64Ty()}, false);
+            llvm::Function* mallocF = module.getFunction("malloc");
+            if (!mallocF) mallocF = llvm::Function::Create(mallocType,
+                llvm::Function::ExternalLinkage, "malloc", module);
+            llvm::FunctionType* abortType = llvm::FunctionType::get(builder.getVoidTy(), false);
+            llvm::Function* abortF = module.getFunction("abort");
+            if (!abortF) abortF = llvm::Function::Create(abortType,
+                llvm::Function::ExternalLinkage, "abort", module);
+
+            llvm::Value* source = genExpr(node.args[0]);
+            llvm::Value* needle = genExpr(node.args[1]);
+            llvm::Value* replacement = genExpr(node.args[2]);
+            llvm::Value* sourceLength = builder.CreateCall(strlenF, {source});
+            llvm::Value* replacementLength = builder.CreateCall(strlenF, {replacement});
+            llvm::Value* needleLength = builder.CreateCall(strlenF, {needle});
+            llvm::Value* match = builder.CreateCall(strstrF, {source, needle});
             llvm::Value* found = builder.CreateICmpNE(
-                pos, llvm::ConstantPointerNull::get(builder.getPtrTy()));
-            llvm::Function* fn = builder.GetInsertBlock()->getParent();
-            llvm::BasicBlock* repl = llvm::BasicBlock::Create(context, "rep_yes", fn);
-            llvm::BasicBlock* done = llvm::BasicBlock::Create(context, "rep_done", fn);
-            builder.CreateCondBr(found, repl, done);
-            builder.SetInsertPoint(repl);
-            builder.CreateCall(strcatF, {outPtr, newv});
-            builder.CreateBr(done);
-            builder.SetInsertPoint(done);
-            return outPtr;
+                match, llvm::ConstantPointerNull::get(builder.getPtrTy()));
+
+            llvm::Function* function = builder.GetInsertBlock()->getParent();
+            auto checkedAdd = [&](llvm::Value* left, llvm::Value* right) -> llvm::Value* {
+                llvm::Value* sum = builder.CreateAdd(left, right);
+                llvm::Value* overflow = builder.CreateICmpULT(sum, left);
+                llvm::BasicBlock* trap = llvm::BasicBlock::Create(context, "rep_size_overflow", function);
+                llvm::BasicBlock* next = llvm::BasicBlock::Create(context, "rep_size_ok", function);
+                builder.CreateCondBr(overflow, trap, next);
+                builder.SetInsertPoint(trap);
+                builder.CreateCall(abortF, {});
+                builder.CreateUnreachable();
+                builder.SetInsertPoint(next);
+                return sum;
+            };
+            auto allocate = [&](llvm::Value* byteCount) -> llvm::Value* {
+                llvm::Value* pointer = builder.CreateCall(mallocF, {byteCount});
+                llvm::Value* failed = builder.CreateICmpEQ(
+                    pointer, llvm::ConstantPointerNull::get(builder.getPtrTy()));
+                llvm::BasicBlock* trap = llvm::BasicBlock::Create(context, "rep_oom", function);
+                llvm::BasicBlock* next = llvm::BasicBlock::Create(context, "rep_allocated", function);
+                builder.CreateCondBr(failed, trap, next);
+                builder.SetInsertPoint(trap);
+                builder.CreateCall(abortF, {});
+                builder.CreateUnreachable();
+                builder.SetInsertPoint(next);
+                return pointer;
+            };
+
+            llvm::BasicBlock* replaceBlock = llvm::BasicBlock::Create(context, "rep_found", function);
+            llvm::BasicBlock* copyBlock = llvm::BasicBlock::Create(context, "rep_missing", function);
+            llvm::BasicBlock* mergeBlock = llvm::BasicBlock::Create(context, "rep_merge", function);
+            builder.CreateCondBr(found, replaceBlock, copyBlock);
+
+            builder.SetInsertPoint(replaceBlock);
+            llvm::Value* prefixLength = builder.CreatePtrDiff(builder.getInt8Ty(), match, source);
+            llvm::Value* tailOffset = checkedAdd(prefixLength, needleLength);
+            llvm::Value* tailLength = builder.CreateSub(sourceLength, tailOffset);
+            llvm::Value* resultLength = checkedAdd(
+                checkedAdd(prefixLength, replacementLength), tailLength);
+            llvm::Value* resultBytes = checkedAdd(resultLength, builder.getInt64(1));
+            llvm::Value* result = allocate(resultBytes);
+            builder.CreateCall(memcpyF, {result, source, prefixLength});
+            llvm::Value* replacementDst = builder.CreateInBoundsGEP(
+                builder.getInt8Ty(), result, {prefixLength});
+            builder.CreateCall(memcpyF, {replacementDst, replacement, replacementLength});
+            llvm::Value* tailDst = builder.CreateInBoundsGEP(
+                builder.getInt8Ty(), replacementDst, {replacementLength});
+            llvm::Value* tailSrc = builder.CreateInBoundsGEP(
+                builder.getInt8Ty(), match, {needleLength});
+            builder.CreateCall(memcpyF, {tailDst, tailSrc, tailLength});
+            llvm::Value* terminator = builder.CreateInBoundsGEP(
+                builder.getInt8Ty(), result, {resultLength});
+            builder.CreateStore(builder.getInt8(0), terminator);
+            llvm::BasicBlock* foundEnd = builder.GetInsertBlock();
+            builder.CreateBr(mergeBlock);
+
+            builder.SetInsertPoint(copyBlock);
+            llvm::Value* copyBytes = checkedAdd(sourceLength, builder.getInt64(1));
+            llvm::Value* copyResult = allocate(copyBytes);
+            builder.CreateCall(memcpyF, {copyResult, source, sourceLength});
+            llvm::Value* copyTerminator = builder.CreateInBoundsGEP(
+                builder.getInt8Ty(), copyResult, {sourceLength});
+            builder.CreateStore(builder.getInt8(0), copyTerminator);
+            llvm::BasicBlock* copyEnd = builder.GetInsertBlock();
+            builder.CreateBr(mergeBlock);
+
+            builder.SetInsertPoint(mergeBlock);
+            llvm::PHINode* resultPhi = builder.CreatePHI(builder.getPtrTy(), 2, "rep_result");
+            resultPhi->addIncoming(result, foundEnd);
+            resultPhi->addIncoming(copyResult, copyEnd);
+            return resultPhi;
         }
         if (name == "flo" || name == "cel" || name == "ron") {
             llvm::FunctionType* ft = llvm::FunctionType::get(
