@@ -861,22 +861,9 @@ void CodeGen::genNode(const Node& node) {
         }
     }
     else if (node.type == NODE_FUNC_DEF) {
-        std::vector<llvm::Type*> paramTypes;
-        for (const std::string& p : node.params) {
-            std::string ptype = p.substr(0, p.find(':'));
-            paramTypes.push_back(svType(ptype));
-        }
-        std::vector<std::string> ptypes;
-        for (const std::string& p : node.params)
-            ptypes.push_back(p.substr(0, p.find(':')));
-        funcParamTypes[node.varName] = ptypes;
-        funcReturnTypes[node.varName] = node.varType.empty() ? "rox" : node.varType;
+        std::vector<std::string> ptypes = funcParamTypes[node.varName];
         llvm::Type* retTy = svType(funcReturnTypes[node.varName]);
-        llvm::FunctionType* ft =
-            llvm::FunctionType::get(retTy, paramTypes, false);
-        llvm::Function* func =
-            llvm::Function::Create(ft,
-                llvm::Function::ExternalLinkage, node.varName, module);
+        llvm::Function* func = funcs[node.varName];
         llvm::BasicBlock* block =
             llvm::BasicBlock::Create(context, "entry", func);
         llvm::BasicBlock* savedBlock = builder.GetInsertBlock();
@@ -1088,6 +1075,27 @@ void CodeGen::generate(const Node& program) {
             {builder.getPtrTy()}, true);
     printfFunc = llvm::Function::Create(printfType,
         llvm::Function::ExternalLinkage, "printf", module);
+
+    for (const Node& node : program.children) {
+        if (node.type != NODE_FUNC_DEF) continue;
+        std::vector<llvm::Type*> parameterTypes;
+        std::vector<std::string> parameterNames;
+        for (const std::string& parameter : node.params) {
+            const size_t separator = parameter.find(':');
+            const std::string typeName = parameter.substr(0, separator);
+            const std::string name = separator == std::string::npos
+                ? std::string() : parameter.substr(separator + 1);
+            parameterTypes.push_back(svType(typeName));
+            parameterNames.push_back(typeName);
+        }
+        const std::string returnType = node.varType.empty() ? "rox" : node.varType;
+        funcParamTypes[node.varName] = parameterNames;
+        funcReturnTypes[node.varName] = returnType;
+        llvm::FunctionType* functionType = llvm::FunctionType::get(
+            svType(returnType), parameterTypes, false);
+        funcs[node.varName] = llvm::Function::Create(
+            functionType, llvm::Function::ExternalLinkage, node.varName, module);
+    }
 
     for (const Node& node : program.children)
         if (node.type == NODE_FUNC_DEF) genNode(node);

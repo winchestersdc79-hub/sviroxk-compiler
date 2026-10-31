@@ -1,0 +1,4 @@
+print(later(5));
+fn int later(int value) {
+    return value + 1;
+}
