@@ -75,6 +75,12 @@ static bool isNameToken(TokenType t) {
     return t == IDENTIFIER || isBuiltinToken(t);
 }
 
+static bool isCallableBuiltinToken(TokenType t) {
+    return t == SQRT || t == ABS || t == POW || t == MAX || t == MIN ||
+           t == FLO || t == CEL || t == RON || t == RAN || t == AR ||
+           t == SER || t == REP || t == STR;
+}
+
 static bool isTypeToken(TokenType t) {
     return t == ROX || t == DOR || t == COS || t == BUE || t == PTR ||
            t == FILE_T || t == CHR || t == ROX64 || t == FIXED_TYPE || t == IDENTIFIER;
@@ -138,7 +144,7 @@ Node parsePrimary() {
         return left;
     }
     // математика
-    if (isBuiltinToken(peek().type) && peek(1).type == LPAREN) {
+    if (isCallableBuiltinToken(peek().type) && peek(1).type == LPAREN) {
         Node left;
         left.type = NODE_FUNC_CALL;
         Token builtinToken = consume();
@@ -697,8 +703,21 @@ Node parseOne() {
         expect(SEMICOLON);
         return node;
     }
+    // pro — прочитать файл
+    if (peek().type == PRO) {
+        Token token = consume();
+        Node node; node.type = NODE_FILE_READ;
+        node.line = token.line;
+        node.column = token.column;
+        expect(LPAREN);
+        node.varName = consume().value;
+        expect(RPAREN);
+        expect(SEMICOLON);
+        return node;
+    }
     // вызов функции как отдельный оператор
-    if (isNameToken(peek().type) && peek(1).type == LPAREN) {
+    if ((peek().type == IDENTIFIER || isCallableBuiltinToken(peek().type)) &&
+        peek().type != PRO && peek(1).type == LPAREN) {
         Node node; node.type = NODE_FUNC_CALL;
         Token name = consume();
         node.varName = name.value;

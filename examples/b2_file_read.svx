@@ -1,0 +1,4 @@
+file input = atk("b2-input.tmp", "r");
+str text = pro(input);
+print(text);
+zak(input);

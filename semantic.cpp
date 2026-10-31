@@ -161,7 +161,8 @@ private:
     bool compatible(const std::string& expectedRaw, const std::string& actualRaw) const {
         std::string expected = normalize(expectedRaw);
         std::string actual = normalize(actualRaw);
-        if (expected == actual || (expected == "char" && actual == "u8")) return true;
+        if (expected == actual || (expected == "char" && actual == "u8") ||
+            (expected == "ptr" && actual.rfind("array<", 0) == 0)) return true;
         if (expected == "f64" && actual == "f32") return true;
         if (isInteger(expected) && isInteger(actual)) {
             const unsigned expectedBits = static_cast<unsigned>(std::stoi(expected.substr(1)));

@@ -1,0 +1,4 @@
+int value = 5;
+ptr pointer = &value;
+*pointer = 9;
+print(value);
