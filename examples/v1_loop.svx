@@ -1,0 +1,8 @@
+int value = 0;
+loop {
+    value = value + 1;
+    if (value == 3) {
+        break;
+    }
+}
+print(value);

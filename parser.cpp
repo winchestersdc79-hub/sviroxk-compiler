@@ -764,6 +764,16 @@ Node parseOne() {
         expect(SEMICOLON);
         return node;
     }
+    if (peek().type == LOOP_T) {
+        Token token = consume();
+        Node node; node.type = NODE_LOOP;
+        node.line = token.line;
+        node.column = token.column;
+        expect(LBRACE);
+        node.children = parseBlock();
+        expect(RBRACE);
+        return node;
+    }
     if (peek().type == WHILE_T) {
         Token token = consume();
         Node node; node.type = NODE_WHILE;

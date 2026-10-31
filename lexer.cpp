@@ -77,6 +77,7 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "const") add(CONST_T, word, tokLine, tokCol);
             else if (word == "for") add(FOR_T, word, tokLine, tokCol);
             else if (word == "while") add(WHILE_T, word, tokLine, tokCol);
+            else if (word == "loop") add(LOOP_T, word, tokLine, tokCol);
             else if (word == "in") add(IN_T, word, tokLine, tokCol);
             else if (word == "svi")  add(SVI,  word, tokLine, tokCol);
             else if (word == "lor")  add(LOR,  word, tokLine, tokCol);
@@ -129,9 +130,9 @@ std::vector<Token> tokenize(const std::string& code) {
             else if (word == "vd")   add(VD,   word, tokLine, tokCol);
             else if (word == "nw")   add(NW,   word, tokLine, tokCol);
             else if (word == "del")  add(DEL,  word, tokLine, tokCol);
-            else if (word == "brk")  add(BRK,  word, tokLine, tokCol);
+            else if (word == "brk" || word == "break") add(BRK, word, tokLine, tokCol);
             else if (word == "imp")  add(IMP,  word, tokLine, tokCol);
-            else if (word == "cont") add(CONT, word, tokLine, tokCol);
+            else if (word == "cont" || word == "continue") add(CONT, word, tokLine, tokCol);
             else if (word == "ar")   add(AR,   word, tokLine, tokCol);
             else if (word == "ser")  add(SER,  word, tokLine, tokCol);
             else if (word == "rep")  add(REP,  word, tokLine, tokCol);

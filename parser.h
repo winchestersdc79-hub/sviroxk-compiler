@@ -46,6 +46,7 @@ enum NodeType {
     NODE_LOOP_W,
     NODE_FOR_RANGE,
     NODE_WHILE,
+    NODE_LOOP,
 };
 
 struct Node {

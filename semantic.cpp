@@ -796,6 +796,14 @@ private:
             scopes_.pop_back();
             break;
         }
+        case NODE_LOOP: {
+            ++loopDepth_;
+            scopes_.emplace_back();
+            checkStatements(node.children);
+            scopes_.pop_back();
+            --loopDepth_;
+            break;
+        }
         case NODE_BREAK:
         case NODE_CONTINUE:
             if (loopDepth_ == 0) error(node, "оператор цикла находится вне цикла");

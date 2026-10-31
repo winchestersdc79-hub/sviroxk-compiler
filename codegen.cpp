@@ -1091,6 +1091,27 @@ void CodeGen::genNode(const Node& node) {
         breakBlock = savedBreak;
         continueBlock = savedContinue;
     }
+    else if (node.type == NODE_LOOP) {
+        llvm::Function* function = builder.GetInsertBlock()->getParent();
+        llvm::BasicBlock* headerBlock = llvm::BasicBlock::Create(context, "loop_header", function);
+        llvm::BasicBlock* bodyBlock = llvm::BasicBlock::Create(context, "loop_body", function);
+        llvm::BasicBlock* afterBlock = llvm::BasicBlock::Create(context, "loop_after", function);
+        const auto savedBreak = breakBlock;
+        const auto savedContinue = continueBlock;
+        breakBlock = afterBlock;
+        continueBlock = headerBlock;
+        const ScopeSnapshot parentScope = saveScope();
+        builder.CreateBr(headerBlock);
+        builder.SetInsertPoint(headerBlock);
+        builder.CreateBr(bodyBlock);
+        builder.SetInsertPoint(bodyBlock);
+        for (const Node& child : node.children) genNode(child);
+        if (!builder.GetInsertBlock()->hasTerminator()) builder.CreateBr(headerBlock);
+        restoreScope(parentScope);
+        builder.SetInsertPoint(afterBlock);
+        breakBlock = savedBreak;
+        continueBlock = savedContinue;
+    }
     else if (node.type == NODE_LOOP_W || node.type == NODE_WHILE) {
         llvm::Function* func = builder.GetInsertBlock()->getParent();
         llvm::BasicBlock* condBlock =
