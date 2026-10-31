@@ -289,7 +289,7 @@ private:
             return "array<" + element + ">";
         }
         case NODE_INPUT:
-            return node.varType == "cos" ? "str" : "i32";
+            return normalize(node.varType) == "str" ? "str" : "i32";
         case NODE_FILE_OPEN: {
             const std::string pathType = node.left ? expression(*node.left) : "<error>";
             if (pathType != "str" && pathType != "<error>")
@@ -715,7 +715,7 @@ private:
             else if (symbol->type != "file") error(node, "ожидался file, получен '" + typeName(symbol->type) + "'");
             if (node.left) {
                 std::string value = expression(*node.left);
-                if (node.type == NODE_FILE_WRITE && value != "cos" && value != "<error>") error(node, "запись в файл принимает string");
+                if (node.type == NODE_FILE_WRITE && value != "str" && value != "<error>") error(node, "запись в файл принимает string");
             }
             break;
         }

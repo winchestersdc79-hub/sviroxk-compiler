@@ -1,0 +1,2 @@
+svi cos lor text = vv_s("text: ");
+print(text);

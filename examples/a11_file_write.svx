@@ -1,0 +1,4 @@
+file output = atk("sc-a11.tmp");
+zap(output, "ok");
+zak(output);
+print(1);
