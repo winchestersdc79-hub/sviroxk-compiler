@@ -755,12 +755,38 @@ Node parseOne() {
         expect(SEMICOLON, "';'");
         return node;
     }
-    // присваивание
-    if (isNameToken(peek().type) && peek(1).type == EQUALS) {
+    // Assignment and arithmetic compound assignment.
+    if (isNameToken(peek().type) &&
+        (peek(1).type == EQUALS || peek(1).type == PLUS_EQ ||
+         peek(1).type == MINUS_EQ || peek(1).type == STAR_EQ ||
+         peek(1).type == SLASH_EQ || peek(1).type == PERCENT_EQ)) {
         Node node; node.type = NODE_ASSIGN;
-        node.varName = consume().value;
-        consume(); // =
-        node.left = makeNode(parseExpr());
+        Token name = consume();
+        node.varName = name.value;
+        node.line = name.line;
+        node.column = name.column;
+        Token operation = consume();
+        Node right = parseExpr();
+        if (operation.type != EQUALS) {
+            Node binary;
+            binary.type = NODE_BINOP;
+            binary.line = operation.line;
+            binary.column = operation.column;
+            binary.op = operation.type == PLUS_EQ ? "+" :
+                operation.type == MINUS_EQ ? "-" :
+                operation.type == STAR_EQ ? "*" :
+                operation.type == SLASH_EQ ? "/" : "%";
+            Node identifier;
+            identifier.type = NODE_IDENTIFIER;
+            identifier.value = name.value;
+            identifier.line = name.line;
+            identifier.column = name.column;
+            binary.left = makeNode(identifier);
+            binary.right = makeNode(right);
+            node.left = makeNode(binary);
+        } else {
+            node.left = makeNode(right);
+        }
         expect(SEMICOLON);
         return node;
     }

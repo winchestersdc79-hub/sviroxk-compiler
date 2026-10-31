@@ -366,9 +366,31 @@ std::vector<Token> tokenize(const std::string& code) {
                     add(LE, "<=", tokLine, tokCol); i += 2; column += 2;
                 } else { add(LT, "<", tokLine, tokCol); ++i; ++column; }
                 continue;
-            case '+': add(PLUS, "+", tokLine, tokCol); break;
-            case '-': add(MINUS, "-", tokLine, tokCol); break;
-            case '*': add(STAR, "*", tokLine, tokCol); break;
+            case '+':
+                if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
+                    add(PLUS_EQ, "+=", tokLine, tokCol); ++i; ++column;
+                } else add(PLUS, "+", tokLine, tokCol);
+                break;
+            case '-':
+                if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
+                    add(MINUS_EQ, "-=", tokLine, tokCol); ++i; ++column;
+                } else add(MINUS, "-", tokLine, tokCol);
+                break;
+            case '*':
+                if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
+                    add(STAR_EQ, "*=", tokLine, tokCol); ++i; ++column;
+                } else add(STAR, "*", tokLine, tokCol);
+                break;
+            case '/':
+                if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
+                    add(SLASH_EQ, "/=", tokLine, tokCol); ++i; ++column;
+                } else add(SLASH, "/", tokLine, tokCol);
+                break;
+            case '%':
+                if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
+                    add(PERCENT_EQ, "%=", tokLine, tokCol); ++i; ++column;
+                } else add(PERCENT, "%", tokLine, tokCol);
+                break;
             case '&':
                 if (i + 1 < (int)code.size() && code[i + 1] == '&') {
                     add(AND_AND, "&&", tokLine, tokCol); i += 2; column += 2;
@@ -383,8 +405,6 @@ std::vector<Token> tokenize(const std::string& code) {
                 std::cerr << "Ошибка " << tokLine << ':' << tokCol
                           << ": одиночный '|' не поддерживается; используйте '||'" << std::endl;
                 std::exit(1);
-            case '/': add(SLASH, "/", tokLine, tokCol); break;
-            case '%': add(PERCENT, "%", tokLine, tokCol); break;
             case ';': add(SEMICOLON, ";", tokLine, tokCol); break;
             case '(': add(LPAREN, "(", tokLine, tokCol); break;
             case ')': add(RPAREN, ")", tokLine, tokCol); break;

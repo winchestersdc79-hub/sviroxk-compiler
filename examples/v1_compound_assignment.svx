@@ -1,0 +1,7 @@
+int value = 20;
+value += 5;
+value -= 3;
+value *= 2;
+value /= 4;
+value %= 6;
+print(value);
