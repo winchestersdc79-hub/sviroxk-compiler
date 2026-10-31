@@ -103,7 +103,7 @@ Node parsePrimary() {
         left.varType = canonicalType(castToken.value);
         left.line = castToken.line;
         left.column = castToken.column;
-        left.left = makeNode(parseExpr());
+        left.left = makeNode(parseUnary());
         return left;
     }
     if (peek().type == LPAREN) {
