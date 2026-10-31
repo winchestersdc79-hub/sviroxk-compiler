@@ -660,10 +660,14 @@ void CodeGen::genNode(const Node& node) {
                 llvm::Value* fmt = getStringPtr("%d\n");
                 builder.CreateCall(printfFunc, {fmt, val});
             } else if (val->getType()->isIntegerTy(64)) {
-                llvm::Value* fmt = getStringPtr("%lld\n");
+                const bool isUnsigned = node.left->type == NODE_IDENTIFIER &&
+                    unsignedVars.count(node.left->value) && unsignedVars[node.left->value];
+                llvm::Value* fmt = getStringPtr(isUnsigned ? "%llu\n" : "%lld\n");
                 builder.CreateCall(printfFunc, {fmt, val});
             } else {
-                llvm::Value* fmt = getStringPtr("%d\n");
+                const bool isUnsigned = node.left->type == NODE_IDENTIFIER &&
+                    unsignedVars.count(node.left->value) && unsignedVars[node.left->value];
+                llvm::Value* fmt = getStringPtr(isUnsigned ? "%u\n" : "%d\n");
                 builder.CreateCall(printfFunc, {fmt, val});
             }
         } else {

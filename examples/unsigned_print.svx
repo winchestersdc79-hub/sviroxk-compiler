@@ -1,0 +1,4 @@
+u32 word = 4000000000;
+u64 wide = 18446744073709551615;
+print(word);
+print(wide);
