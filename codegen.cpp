@@ -6,6 +6,14 @@
 #include <cstdlib>
 #include <cmath>
 
+namespace {
+
+bool blockHasTerminator(const llvm::BasicBlock* block) {
+    return block && !block->empty() && block->back().isTerminator();
+}
+
+} // namespace
+
 CodeGen::ScopeSnapshot CodeGen::saveScope() const {
     return {vars, unsignedVars, charVars, constVars, integerWidths, arrays, arrayLengths};
 }
@@ -353,11 +361,11 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         builder.SetInsertPoint(trueBlock);
         llvm::Value* trueValue = genExpr(*node.right);
         llvm::BasicBlock* trueEnd = builder.GetInsertBlock();
-        if (!trueEnd->hasTerminator()) builder.CreateBr(mergeBlock);
+        if (!blockHasTerminator(trueEnd)) builder.CreateBr(mergeBlock);
         builder.SetInsertPoint(falseBlock);
         llvm::Value* falseValue = genExpr(*node.extra);
         llvm::BasicBlock* falseEnd = builder.GetInsertBlock();
-        if (!falseEnd->hasTerminator()) builder.CreateBr(mergeBlock);
+        if (!blockHasTerminator(falseEnd)) builder.CreateBr(mergeBlock);
         llvm::Type* resultType = trueValue->getType();
         if (resultType != falseValue->getType()) {
             if (resultType->isFloatingPointTy() || falseValue->getType()->isFloatingPointTy()) {
@@ -395,7 +403,7 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             builder.SetInsertPoint(rhsBlock);
             llvm::Value* right = toBool(genExpr(*node.right));
             llvm::BasicBlock* rhsEnd = builder.GetInsertBlock();
-            if (!rhsEnd->hasTerminator()) builder.CreateBr(mergeBlock);
+            if (!blockHasTerminator(rhsEnd)) builder.CreateBr(mergeBlock);
             builder.SetInsertPoint(mergeBlock);
             llvm::PHINode* result = builder.CreatePHI(builder.getInt1Ty(), 2, "logic_result");
             result->addIncoming(node.op == "&&" ? builder.getFalse() : builder.getTrue(), leftBlock);
@@ -783,7 +791,7 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
 }
 
 void CodeGen::genNode(const Node& node) {
-    if (builder.GetInsertBlock() && builder.GetInsertBlock()->hasTerminator())
+    if (blockHasTerminator(builder.GetInsertBlock()))
         return;
     if (node.type == NODE_SLOV) {
         if (node.left && node.left->type == NODE_STRING) {
@@ -1087,12 +1095,12 @@ void CodeGen::genNode(const Node& node) {
         const ScopeSnapshot parentScope = saveScope();
         builder.SetInsertPoint(thenBlock);
         for (const Node& n : node.children) genNode(n);
-        if (!builder.GetInsertBlock()->hasTerminator())
+        if (!blockHasTerminator(builder.GetInsertBlock()))
             builder.CreateBr(mergeBlock);
         restoreScope(parentScope);
         builder.SetInsertPoint(elseBlock);
         for (const Node& n : node.elseChildren) genNode(n);
-        if (!builder.GetInsertBlock()->hasTerminator())
+        if ((builder.GetInsertBlock()->empty() || !builder.GetInsertBlock()->back().isTerminator()))
             builder.CreateBr(mergeBlock);
         restoreScope(parentScope);
         builder.SetInsertPoint(mergeBlock);
@@ -1123,7 +1131,7 @@ void CodeGen::genNode(const Node& node) {
         builder.SetInsertPoint(bodyBlock);
         const ScopeSnapshot parentScope = saveScope();
         for (const Node& n : node.children) genNode(n);
-        if (!builder.GetInsertBlock()->hasTerminator())
+        if ((builder.GetInsertBlock()->empty() || !builder.GetInsertBlock()->back().isTerminator()))
             builder.CreateBr(stepBlock);
         restoreScope(parentScope);
         builder.SetInsertPoint(stepBlock);
@@ -1169,7 +1177,7 @@ void CodeGen::genNode(const Node& node) {
         llvm::Value* value = builder.CreateLoad(elementType, address);
         builder.CreateStore(value, element);
         for (const Node& child : node.children) genNode(child);
-        if (!builder.GetInsertBlock()->hasTerminator()) builder.CreateBr(stepBlock);
+        if ((builder.GetInsertBlock()->empty() || !builder.GetInsertBlock()->back().isTerminator())) builder.CreateBr(stepBlock);
         builder.SetInsertPoint(stepBlock);
         current = builder.CreateLoad(builder.getInt32Ty(), index);
         builder.CreateStore(builder.CreateAdd(current, builder.getInt32(1)), index);
@@ -1218,7 +1226,7 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateCondBr(condition, bodyBlock, afterBlock);
         builder.SetInsertPoint(bodyBlock);
         for (const Node& child : node.children) genNode(child);
-        if (!builder.GetInsertBlock()->hasTerminator()) builder.CreateBr(stepBlock);
+        if ((builder.GetInsertBlock()->empty() || !builder.GetInsertBlock()->back().isTerminator())) builder.CreateBr(stepBlock);
         builder.SetInsertPoint(stepBlock);
         current = builder.CreateLoad(iteratorType, iterator);
         llvm::Value* next = builder.CreateAdd(current, llvm::ConstantInt::get(iteratorType, 1));
@@ -1244,7 +1252,7 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateBr(bodyBlock);
         builder.SetInsertPoint(bodyBlock);
         for (const Node& child : node.children) genNode(child);
-        if (!builder.GetInsertBlock()->hasTerminator()) builder.CreateBr(headerBlock);
+        if ((builder.GetInsertBlock()->empty() || !builder.GetInsertBlock()->back().isTerminator())) builder.CreateBr(headerBlock);
         restoreScope(parentScope);
         builder.SetInsertPoint(afterBlock);
         breakBlock = savedBreak;
@@ -1269,7 +1277,7 @@ void CodeGen::genNode(const Node& node) {
         builder.SetInsertPoint(bodyBlock);
         const ScopeSnapshot parentScope = saveScope();
         for (const Node& n : node.children) genNode(n);
-        if (!builder.GetInsertBlock()->hasTerminator())
+        if ((builder.GetInsertBlock()->empty() || !builder.GetInsertBlock()->back().isTerminator()))
             builder.CreateBr(condBlock);
         restoreScope(parentScope);
         builder.SetInsertPoint(afterBlock);
