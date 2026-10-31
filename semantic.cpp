@@ -1,4 +1,5 @@
 #include "semantic.h"
+#include "diagnostics.h"
 
 #include <algorithm>
 #include <cstdint>
@@ -142,8 +143,8 @@ private:
 
     void error(const Node& node, const std::string& message) {
         ++errors_;
-        std::cerr << filename_ << ':' << node.line << ':' << node.column
-                  << ": error[semantic]: " << message << '\n';
+        sc::reportDiagnostic(node.file.empty() ? filename_ : node.file,
+                             node.line, node.column, "semantic", message);
     }
 
     bool knownType(const std::string& raw) const {

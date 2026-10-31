@@ -1,4 +1,5 @@
 #include "parser.h"
+#include "diagnostics.h"
 #include <iostream>
 #include <sstream>
 #include <cstdlib>
@@ -37,8 +38,7 @@ static std::string tokenDescription(const Token& token) {
 }
 
 [[noreturn]] static void failAt(const Token& token, const std::string& message) {
-    std::cerr << "Ошибка " << token.line << ':' << token.column << ": "
-              << message << std::endl;
+    sc::reportDiagnostic(token.file, token.line, token.column, "syntax", message);
     std::exit(1);
 }
 
@@ -121,6 +121,7 @@ Node parsePrimary() {
         left.varType = canonicalType(castToken.value);
         left.line = castToken.line;
         left.column = castToken.column;
+        left.file = castToken.file;
         left.left = makeNode(parseUnary());
         return left;
     }
@@ -134,7 +135,7 @@ Node parsePrimary() {
         Token token = consume();
         left.type = NODE_NUMBER; left.value = "1";
         left.varType = "bue";
-        left.line = token.line; left.column = token.column;
+        left.line = token.line; left.column = token.column; left.file = token.file;
         return left;
     }
     if (peek().type == FALSE_T) {
@@ -152,6 +153,7 @@ Node parsePrimary() {
         left.varName = builtinToken.value;
         left.line = builtinToken.line;
         left.column = builtinToken.column;
+        left.file = builtinToken.file;
         expect(LPAREN);
         while (peek().type != RPAREN && peek().type != END) {
             left.args.push_back(parseExpr());
@@ -232,6 +234,7 @@ Node parsePrimary() {
     Token t = consume();
     left.line = t.line;
     left.column = t.column;
+    left.file = t.file;
     if (t.type == NUMBER) {
         left.type = NODE_NUMBER;
         left.value = t.value;
@@ -258,7 +261,7 @@ Node parsePrimary() {
         if (peek().type == LPAREN) {
             left.type = NODE_FUNC_CALL;
             left.varName = t.value;
-            left.line = t.line; left.column = t.column;
+            left.line = t.line; left.column = t.column; left.file = t.file;
             consume();
             while (peek().type != RPAREN && peek().type != END) {
                 left.args.push_back(parseExpr());
@@ -294,7 +297,7 @@ Node parseUnary() {
     if (peek().type == BIT_NOT) {
         Token op = consume();
         Node node; node.type = NODE_BINOP;
-        node.line = op.line; node.column = op.column;
+        node.line = op.line; node.column = op.column; node.file = op.file;
         node.op = "~";
         node.left = makeNode(parseUnary());
         return node;
@@ -319,6 +322,7 @@ Node parseUnary() {
             n.type = NODE_NUMBER;
             n.line = minus.line;
             n.column = minus.column;
+            n.file = minus.file;
             n.value = "-" + num.value;
             return n;
         }
@@ -326,6 +330,7 @@ Node parseUnary() {
         n.type = NODE_BINOP;
         n.line = minus.line;
         n.column = minus.column;
+        n.file = minus.file;
         n.op = "-";
         n.left = makeNode();
         n.left->type = NODE_NUMBER;
@@ -424,6 +429,7 @@ static Node makeBinary(Node left, const Token& op, Node right) {
     result.type = NODE_BINOP;
     result.line = op.line;
     result.column = op.column;
+    result.file = op.file;
     result.op = op.value;
     result.left = makeNode(left);
     result.right = makeNode(right);
@@ -493,6 +499,7 @@ Node parseOne() {
         node.isConst = declarationToken.type == CONST_T;
         node.line = declarationToken.line;
         node.column = declarationToken.column;
+        node.file = declarationToken.file;
         Token nameToken = peek();
         if (!isNameToken(nameToken.type))
             failAt(nameToken, "ожидалось имя переменной");
@@ -520,6 +527,7 @@ Node parseOne() {
             Node node;
             node.line = declarationToken.line;
             node.column = declarationToken.column;
+            node.file = declarationToken.file;
             node.type = NODE_STRUCT_INSTANCE;
             node.varType = structName;
             node.varName = varName;
@@ -584,7 +592,7 @@ Node parseOne() {
     // slov
     if (peek().type == SLOV) {
         Node node; node.type = NODE_SLOV;
-        node.line = peek().line; node.column = peek().column;
+        node.line = peek().line; node.column = peek().column; node.file = peek().file;
         consume();
         expect(LPAREN);
         Node expr = parseExpr();
@@ -599,6 +607,7 @@ Node parseOne() {
         Node node; node.type = NODE_FUNC_DEF;
         node.line = peek().line;
         node.column = peek().column;
+        node.file = peek().file;
         consume();
         node.varType = "rox";
         if (peek().type == VOID_T) {
@@ -783,6 +792,7 @@ Node parseOne() {
         Node node; node.type = NODE_FILE_READ;
         node.line = token.line;
         node.column = token.column;
+        node.file = token.file;
         expect(LPAREN);
         node.varName = consume().value;
         expect(RPAREN);
@@ -795,7 +805,7 @@ Node parseOne() {
         Node node; node.type = NODE_FUNC_CALL;
         Token name = consume();
         node.varName = name.value;
-        node.line = name.line; node.column = name.column;
+        node.line = name.line; node.column = name.column; node.file = name.file;
         expect(LPAREN);
         while (peek().type != RPAREN && peek().type != END) {
             node.args.push_back(parseExpr());
@@ -814,7 +824,7 @@ Node parseOne() {
         if (!isTypeName(typeToken.value))
             failAt(typeToken, "неизвестный тип '" + typeToken.value + "'");
         Node node; node.type = NODE_VAR_DECL;
-        node.line = typeToken.line; node.column = typeToken.column;
+        node.line = typeToken.line; node.column = typeToken.column; node.file = typeToken.file;
         node.varType = canonicalType(typeToken.value);
         Token variableName = peek();
         if (!isNameToken(variableName.type))
@@ -834,22 +844,26 @@ Node parseOne() {
         node.varName = name.value;
         node.line = name.line;
         node.column = name.column;
+        node.file = name.file;
         Node binary;
         binary.type = NODE_BINOP;
         binary.line = operation.line;
         binary.column = operation.column;
+        binary.file = operation.file;
         binary.op = operation.type == PLUS_PLUS ? "+" : "-";
         Node identifier;
         identifier.type = NODE_IDENTIFIER;
         identifier.value = name.value;
         identifier.line = name.line;
         identifier.column = name.column;
+        identifier.file = name.file;
         binary.left = makeNode(identifier);
         Node one;
         one.type = NODE_NUMBER;
         one.value = "1";
         one.line = operation.line;
         one.column = operation.column;
+        one.file = operation.file;
         binary.right = makeNode(one);
         node.left = makeNode(binary);
         expect(SEMICOLON);
@@ -872,6 +886,7 @@ Node parseOne() {
             binary.type = NODE_BINOP;
             binary.line = operation.line;
             binary.column = operation.column;
+            binary.file = operation.file;
             binary.op = operation.type == PLUS_EQ ? "+" :
                 operation.type == MINUS_EQ ? "-" :
                 operation.type == STAR_EQ ? "*" :
@@ -919,6 +934,7 @@ Node parseOne() {
         Node node; node.type = NODE_FOR_RANGE;
         node.line = forToken.line;
         node.column = forToken.column;
+        node.file = forToken.file;
         Token name = peek();
         if (!isNameToken(name.type)) failAt(name, "ожидалось имя счётчика for");
         node.varName = consume().value;

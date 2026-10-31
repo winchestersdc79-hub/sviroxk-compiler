@@ -60,6 +60,7 @@ struct Node {
     std::string op;
     int line = 1;
     int column = 1;
+    std::string file;
     Node* left = nullptr;
     Node* right = nullptr;
     Node* extra = nullptr;

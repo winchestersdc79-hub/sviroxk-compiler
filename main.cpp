@@ -5,6 +5,7 @@
 #include <set>
 #include <cstdlib>
 #include "lexer.h"
+#include "diagnostics.h"
 #include "parser.h"
 #include "semantic.h"
 #include "codegen.h"
@@ -50,8 +51,9 @@ static void appendModuleTokens(const fs::path& sourcePath,
 
     std::string code((std::istreambuf_iterator<char>(file)),
                      std::istreambuf_iterator<char>());
+    sc::registerSource(canonicalPath.string(), code);
     active.insert(canonicalPath);
-    std::vector<Token> tokens = tokenize(code);
+    std::vector<Token> tokens = tokenize(code, canonicalPath.string());
 
     for (size_t i = 0; i < tokens.size();) {
         if (tokens[i].type != IMP) {
@@ -103,7 +105,7 @@ int main(int argc, char* argv[]) {
     allTokens.push_back({END, "", 1, 1});
 
     Node node = parse(allTokens);
-    if (!checkSemantics(node, argv[1])) return 2;
+    if (!checkSemantics(node, fs::absolute(argv[1]).string())) return 2;
 
     CodeGen codegen;
     codegen.generate(node);

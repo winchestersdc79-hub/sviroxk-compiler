@@ -47,8 +47,9 @@ struct Token {
     std::string value;
     int line = 1;
     int column = 1;
+    std::string file;
 };
 
-std::vector<Token> tokenize(const std::string& code);
+std::vector<Token> tokenize(const std::string& code, const std::string& filename = {});
 
 #endif

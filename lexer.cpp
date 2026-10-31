@@ -1,16 +1,17 @@
 #include "lexer.h"
+#include "diagnostics.h"
 #include <iostream>
 #include <cctype>
 #include <cstdlib>
 
-std::vector<Token> tokenize(const std::string& code) {
+std::vector<Token> tokenize(const std::string& code, const std::string& filename) {
     std::vector<Token> tokens;
     int i = 0;
     int line = 1;
     int column = 1;
 
     auto add = [&](TokenType type, const std::string& value, int tokLine, int tokCol) {
-        tokens.push_back({type, value, tokLine, tokCol});
+        tokens.push_back({type, value, tokLine, tokCol, filename});
     };
 
     while (i < (int)code.size()) {
