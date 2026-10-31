@@ -13,6 +13,7 @@ class CodeGen {
         std::map<std::string, llvm::AllocaInst*> vars;
         std::map<std::string, bool> unsignedVars;
         std::map<std::string, bool> charVars;
+        std::map<std::string, bool> constVars;
         std::map<std::string, unsigned> integerWidths;
         std::map<std::string, llvm::AllocaInst*> arrays;
         std::map<std::string, unsigned> arrayLengths;
@@ -28,6 +29,7 @@ public:
     std::map<std::string, llvm::AllocaInst*> vars;
     std::map<std::string, bool> unsignedVars;
     std::map<std::string, bool> charVars;
+    std::map<std::string, bool> constVars;
     std::map<std::string, unsigned> integerWidths;
     std::map<std::string, llvm::AllocaInst*> arrays;
     std::map<std::string, unsigned> arrayLengths;

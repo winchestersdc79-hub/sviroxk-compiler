@@ -416,10 +416,11 @@ std::vector<Node> parseBlock() {
 }
 
 Node parseOne() {
-    // Short variable declaration: let count: int = 0;
-    if (peek().type == LET) {
+    // Short variable and constant declarations.
+    if (peek().type == LET || peek().type == CONST_T) {
         Token declarationToken = consume();
         Node node; node.type = NODE_VAR_DECL;
+        node.isConst = declarationToken.type == CONST_T;
         node.line = declarationToken.line;
         node.column = declarationToken.column;
         Token nameToken = peek();

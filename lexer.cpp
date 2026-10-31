@@ -74,6 +74,7 @@ std::vector<Token> tokenize(const std::string& code) {
                 column++;
             }
             if      (word == "let")  add(LET,  word, tokLine, tokCol);
+            else if (word == "const") add(CONST_T, word, tokLine, tokCol);
             else if (word == "svi")  add(SVI,  word, tokLine, tokCol);
             else if (word == "lor")  add(LOR,  word, tokLine, tokCol);
             else if (word == "int")  add(ROX,  word, tokLine, tokCol);

@@ -51,6 +51,7 @@ struct Node {
     std::string value;
     mutable std::string varType;
     std::string varName;
+    bool isConst = false;
     std::string op;
     int line = 1;
     int column = 1;

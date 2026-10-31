@@ -7,13 +7,14 @@
 #include <cmath>
 
 CodeGen::ScopeSnapshot CodeGen::saveScope() const {
-    return {vars, unsignedVars, charVars, integerWidths, arrays, arrayLengths};
+    return {vars, unsignedVars, charVars, constVars, integerWidths, arrays, arrayLengths};
 }
 
 void CodeGen::restoreScope(const ScopeSnapshot& scope) {
     vars = scope.vars;
     unsignedVars = scope.unsignedVars;
     charVars = scope.charVars;
+    constVars = scope.constVars;
     integerWidths = scope.integerWidths;
     arrays = scope.arrays;
     arrayLengths = scope.arrayLengths;
@@ -745,6 +746,7 @@ void CodeGen::genNode(const Node& node) {
         val = castTo(val, ty, isUnsignedExpr(*node.left));
         builder.CreateStore(val, alloca);
         vars[node.varName] = alloca;
+        constVars[node.varName] = node.isConst;
         unsignedVars[node.varName] = node.varType == "u8" || node.varType == "u16" ||
             node.varType == "u32" || node.varType == "u64" || node.varType == "char";
         charVars[node.varName] = node.varType == "char";
@@ -752,7 +754,7 @@ void CodeGen::genNode(const Node& node) {
     }
     else if (node.type == NODE_ASSIGN) {
         llvm::AllocaInst* alloca = vars[node.varName];
-        if (alloca) {
+        if (alloca && !constVars[node.varName]) {
             llvm::Value* val = genExpr(*node.left);
             llvm::Type* ty = alloca->getAllocatedType();
             val = castTo(val, ty, isUnsignedExpr(*node.left));
@@ -871,6 +873,7 @@ void CodeGen::genNode(const Node& node) {
         auto savedVars = vars;
         auto savedUnsignedVars = unsignedVars;
         auto savedCharVars = charVars;
+        auto savedConstVars = constVars;
         auto savedIntegerWidths = integerWidths;
         auto savedArrays = arrays;
         auto savedArrayLengths = arrayLengths;
@@ -890,6 +893,7 @@ void CodeGen::genNode(const Node& node) {
             unsignedVars[pname] = ptype == "u8" || ptype == "u16" ||
                 ptype == "u32" || ptype == "u64" || ptype == "char";
             charVars[pname] = ptype == "char";
+            constVars[pname] = false;
             integerWidths[pname] = ty->isIntegerTy() ? ty->getIntegerBitWidth() : 32;
         }
         bool hasRet = false;
@@ -911,6 +915,7 @@ void CodeGen::genNode(const Node& node) {
         vars = savedVars;
         unsignedVars = savedUnsignedVars;
         charVars = savedCharVars;
+        constVars = savedConstVars;
         integerWidths = savedIntegerWidths;
         arrays = savedArrays;
         arrayLengths = savedArrayLengths;

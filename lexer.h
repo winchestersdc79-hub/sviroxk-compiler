@@ -6,7 +6,7 @@
 
 enum TokenType {
     // Переменные
-    SVI, LOR, LET, COLON,
+    SVI, LOR, LET, CONST_T, COLON,
     // Типы
     ROX, DOR, COS, BUE, VOID_T, FIXED_TYPE,
     // Условия

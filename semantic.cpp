@@ -17,6 +17,7 @@ struct Symbol {
     std::string type;
     int line;
     int column;
+    bool isConst = false;
 };
 
 struct Function {
@@ -177,13 +178,13 @@ private:
     }
 
     bool declare(const std::string& name, const std::string& type,
-                 const Node& node) {
+                 const Node& node, bool isConst = false) {
         auto& scope = scopes_.back();
         if (scope.count(name)) {
             error(node, "повторное объявление '" + name + "' в этой области видимости");
             return false;
         }
-        scope[name] = {normalize(type), node.line, node.column};
+        scope[name] = {normalize(type), node.line, node.column, isConst};
         return true;
     }
 
@@ -595,7 +596,7 @@ private:
                       typeName(effectiveType) + "', но инициализируется значением типа '"+
                       typeName(actual) + "'");
             }
-            declare(node.varName, node.varType, node);
+            declare(node.varName, node.varType, node, node.isConst);
             break;
         }
         case NODE_ARRAY_DECL: {
@@ -659,6 +660,11 @@ private:
             const Symbol* symbol = lookup(node.varName);
             if (!symbol) {
                 error(node, "присваивание неизвестному имени '" + node.varName + "'");
+                expression(*node.left);
+                break;
+            }
+            if (symbol && symbol->isConst) {
+                error(node, "нельзя присвоить значение константе '" + node.varName + "'");
                 expression(*node.left);
                 break;
             }
