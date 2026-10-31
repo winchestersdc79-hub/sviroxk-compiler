@@ -343,6 +343,39 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         builder.CreateCall(scanfF, {fmt, tmp});
         return builder.CreateLoad(builder.getInt32Ty(), tmp);
     }
+    if (node.type == NODE_TERNARY) {
+        llvm::Value* condition = toBool(genExpr(*node.left));
+        llvm::Function* function = builder.GetInsertBlock()->getParent();
+        llvm::BasicBlock* trueBlock = llvm::BasicBlock::Create(context, "ternary_true", function);
+        llvm::BasicBlock* falseBlock = llvm::BasicBlock::Create(context, "ternary_false", function);
+        llvm::BasicBlock* mergeBlock = llvm::BasicBlock::Create(context, "ternary_merge", function);
+        builder.CreateCondBr(condition, trueBlock, falseBlock);
+        builder.SetInsertPoint(trueBlock);
+        llvm::Value* trueValue = genExpr(*node.right);
+        llvm::BasicBlock* trueEnd = builder.GetInsertBlock();
+        if (!trueEnd->hasTerminator()) builder.CreateBr(mergeBlock);
+        builder.SetInsertPoint(falseBlock);
+        llvm::Value* falseValue = genExpr(*node.extra);
+        llvm::BasicBlock* falseEnd = builder.GetInsertBlock();
+        if (!falseEnd->hasTerminator()) builder.CreateBr(mergeBlock);
+        llvm::Type* resultType = trueValue->getType();
+        if (resultType != falseValue->getType()) {
+            if (resultType->isFloatingPointTy() || falseValue->getType()->isFloatingPointTy()) {
+                resultType = resultType->isDoubleTy() || falseValue->getType()->isDoubleTy()
+                    ? builder.getDoubleTy() : builder.getFloatTy();
+            } else if (resultType->isIntegerTy() && falseValue->getType()->isIntegerTy()) {
+                resultType = resultType->getIntegerBitWidth() >= falseValue->getType()->getIntegerBitWidth()
+                    ? resultType : falseValue->getType();
+            }
+            trueValue = castTo(trueValue, resultType, isUnsignedExpr(*node.right));
+            falseValue = castTo(falseValue, resultType, isUnsignedExpr(*node.extra));
+        }
+        builder.SetInsertPoint(mergeBlock);
+        llvm::PHINode* result = builder.CreatePHI(resultType, 2, "ternary_result");
+        result->addIncoming(trueValue, trueEnd);
+        result->addIncoming(falseValue, falseEnd);
+        return result;
+    }
     if (node.type == NODE_BINOP) {
         llvm::Value* L = genExpr(*node.left);
         if (node.op == "!")

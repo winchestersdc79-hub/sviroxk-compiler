@@ -47,6 +47,7 @@ enum NodeType {
     NODE_FOR_RANGE,
     NODE_WHILE,
     NODE_LOOP,
+    NODE_TERNARY,
 };
 
 struct Node {

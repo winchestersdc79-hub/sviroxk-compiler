@@ -419,6 +419,7 @@ std::vector<Token> tokenize(const std::string& code) {
             case ']': add(RBRACKET, "]", tokLine, tokCol); break;
             case '.': add(DOT, ".", tokLine, tokCol); break;
             case ':': add(COLON, ":", tokLine, tokCol); break;
+            case '?': add(QUESTION, "?", tokLine, tokCol); break;
             default:
                 std::cerr << "Ошибка " << tokLine << ":" << tokCol
                           << " неизвестный символ: " << c << std::endl;

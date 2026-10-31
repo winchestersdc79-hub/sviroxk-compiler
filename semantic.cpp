@@ -320,6 +320,19 @@ private:
         case NODE_FILE_READ:
             if (!lookup(node.varName)) error(node, "неизвестный файл '" + node.varName + "'");
             return "str";
+        case NODE_TERNARY: {
+            const std::string conditionType = expression(*node.left);
+            if (conditionType != "bool" && !isInteger(conditionType) && conditionType != "<error>")
+                error(*node.left, "условие тернарного оператора должно иметь тип bool или integer");
+            const std::string trueType = expression(*node.right);
+            const std::string falseType = expression(*node.extra);
+            if (trueType == falseType) return trueType;
+            if (compatible(trueType, falseType)) return trueType;
+            if (compatible(falseType, trueType)) return falseType;
+            error(node, "ветви тернарного оператора имеют несовместимые типы '" +
+                  typeName(trueType) + "' и '" + typeName(falseType) + "'");
+            return "<error>";
+        }
         case NODE_BINOP:
             return binary(node);
         case NODE_FUNC_CALL:

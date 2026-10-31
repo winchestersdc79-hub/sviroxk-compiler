@@ -397,6 +397,18 @@ Node parseExpr() {
         Token op = consume();
         left = makeBinary(left, op, parseLogicalAnd());
     }
+    if (peek().type == QUESTION) {
+        Token question = consume();
+        Node ternary;
+        ternary.type = NODE_TERNARY;
+        ternary.line = question.line;
+        ternary.column = question.column;
+        ternary.left = makeNode(left);
+        ternary.right = makeNode(parseExpr());
+        expect(COLON, "':'");
+        ternary.extra = makeNode(parseExpr());
+        return ternary;
+    }
     return left;
 }
 
