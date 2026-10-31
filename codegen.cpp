@@ -417,46 +417,77 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
     if (node.type == NODE_FUNC_CALL) {
         std::string name = node.varName;
         // математика
-        if (name == "sqrt") {
-            llvm::FunctionType* ft = llvm::FunctionType::get(
-                builder.getDoubleTy(), {builder.getDoubleTy()}, false);
-            llvm::Function* f = module.getFunction("sqrt");
-            if (!f) f = llvm::Function::Create(ft,
-                llvm::Function::ExternalLinkage, "sqrt", module);
-            llvm::Value* arg = builder.CreateSIToFP(
-                genExpr(node.args[0]), builder.getDoubleTy());
-            return builder.CreateFPToSI(
-                builder.CreateCall(f, {arg}), builder.getInt32Ty());
+        if (name == "sqrt" || name == "pow" || name == "flo" ||
+            name == "cel" || name == "ron") {
+            const std::string mathName = name == "flo" ? "floor" :
+                name == "cel" ? "ceil" : name == "ron" ? "round" : name;
+            llvm::FunctionType* type = name == "pow"
+                ? llvm::FunctionType::get(builder.getDoubleTy(),
+                    {builder.getDoubleTy(), builder.getDoubleTy()}, false)
+                : llvm::FunctionType::get(builder.getDoubleTy(),
+                    {builder.getDoubleTy()}, false);
+            llvm::Function* function = module.getFunction(mathName);
+            if (!function) function = llvm::Function::Create(type,
+                llvm::Function::ExternalLinkage, mathName, module);
+            std::vector<llvm::Value*> args;
+            bool floatingArgument = false;
+            bool wideIntegerArgument = false;
+            for (const Node& argument : node.args) {
+                llvm::Value* value = genExpr(argument);
+                floatingArgument |= value->getType()->isFloatingPointTy();
+                wideIntegerArgument |= value->getType()->isIntegerTy(64);
+                if (value->getType()->isIntegerTy())
+                    value = isUnsignedExpr(argument)
+                        ? builder.CreateUIToFP(value, builder.getDoubleTy())
+                        : builder.CreateSIToFP(value, builder.getDoubleTy());
+                else if (value->getType()->isFloatTy())
+                    value = builder.CreateFPExt(value, builder.getDoubleTy());
+                args.push_back(value);
+            }
+            llvm::Value* result = builder.CreateCall(function, args);
+            if (floatingArgument) return result;
+            return wideIntegerArgument
+                ? builder.CreateFPToSI(result, builder.getInt64Ty())
+                : builder.CreateFPToSI(result, builder.getInt32Ty());
         }
         if (name == "abs") {
-            llvm::Value* arg = genExpr(node.args[0]);
-            llvm::Value* neg = builder.CreateNeg(arg);
-            llvm::Value* cmp = builder.CreateICmpSLT(arg, builder.getInt32(0));
-            return builder.CreateSelect(cmp, neg, arg);
+            llvm::Value* value = genExpr(node.args[0]);
+            if (value->getType()->isFloatingPointTy()) {
+                llvm::Value* negated = builder.CreateFNeg(value);
+                llvm::Value* negative = builder.CreateFCmpOLT(
+                    value, llvm::ConstantFP::get(value->getType(), 0.0));
+                return builder.CreateSelect(negative, negated, value);
+            }
+            llvm::Value* negated = builder.CreateNeg(value);
+            llvm::Value* negative = builder.CreateICmpSLT(
+                value, llvm::ConstantInt::get(value->getType(), 0));
+            return builder.CreateSelect(negative, negated, value);
         }
-        if (name == "pow") {
-            llvm::FunctionType* ft = llvm::FunctionType::get(
-                builder.getDoubleTy(),
-                {builder.getDoubleTy(), builder.getDoubleTy()}, false);
-            llvm::Function* f = module.getFunction("pow");
-            if (!f) f = llvm::Function::Create(ft,
-                llvm::Function::ExternalLinkage, "pow", module);
-            llvm::Value* a = builder.CreateSIToFP(
-                genExpr(node.args[0]), builder.getDoubleTy());
-            llvm::Value* b = builder.CreateSIToFP(
-                genExpr(node.args[1]), builder.getDoubleTy());
-            return builder.CreateFPToSI(
-                builder.CreateCall(f, {a, b}), builder.getInt32Ty());
-        }
-        if (name == "max") {
-            llvm::Value* a = genExpr(node.args[0]);
-            llvm::Value* b = genExpr(node.args[1]);
-            return builder.CreateSelect(builder.CreateICmpSGT(a, b), a, b);
-        }
-        if (name == "min") {
-            llvm::Value* a = genExpr(node.args[0]);
-            llvm::Value* b = genExpr(node.args[1]);
-            return builder.CreateSelect(builder.CreateICmpSLT(a, b), a, b);
+        if (name == "max" || name == "min") {
+            llvm::Value* left = genExpr(node.args[0]);
+            llvm::Value* right = genExpr(node.args[1]);
+            llvm::Type* common = left->getType();
+            if (left->getType()->isFloatingPointTy() || right->getType()->isFloatingPointTy()) {
+                common = left->getType()->isDoubleTy() || right->getType()->isDoubleTy()
+                    ? builder.getDoubleTy() : builder.getFloatTy();
+                left = castTo(left, common, isUnsignedExpr(node.args[0]));
+                right = castTo(right, common, isUnsignedExpr(node.args[1]));
+                llvm::Value* condition = name == "max"
+                    ? builder.CreateFCmpOGT(left, right)
+                    : builder.CreateFCmpOLT(left, right);
+                return builder.CreateSelect(condition, left, right);
+            }
+            if (left->getType() != right->getType()) {
+                common = left->getType()->getIntegerBitWidth() >= right->getType()->getIntegerBitWidth()
+                    ? left->getType() : right->getType();
+                left = castTo(left, common, isUnsignedExpr(node.args[0]));
+                right = castTo(right, common, isUnsignedExpr(node.args[1]));
+            }
+            const bool unsignedValues = isUnsignedExpr(node.args[0]) || isUnsignedExpr(node.args[1]);
+            llvm::Value* condition = name == "max"
+                ? (unsignedValues ? builder.CreateICmpUGT(left, right) : builder.CreateICmpSGT(left, right))
+                : (unsignedValues ? builder.CreateICmpULT(left, right) : builder.CreateICmpSLT(left, right));
+            return builder.CreateSelect(condition, left, right);
         }
         if (name == "str") {
             llvm::FunctionType* sprintfType =
@@ -471,7 +502,16 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
                 llvm::ArrayType::get(builder.getInt8Ty(), 64), buf,
                 {builder.getInt32(0), builder.getInt32(0)});
             llvm::Value* val = genExpr(node.args[0]);
-            llvm::Value* fmt = getStringPtr("%d");
+            llvm::Value* fmt;
+            if (val->getType()->isFloatingPointTy()) {
+                if (val->getType()->isFloatTy())
+                    val = builder.CreateFPExt(val, builder.getDoubleTy());
+                fmt = getStringPtr("%f");
+            } else if (val->getType()->isIntegerTy(64)) {
+                fmt = getStringPtr(isUnsignedExpr(node.args[0]) ? "%llu" : "%lld");
+            } else {
+                fmt = getStringPtr(isUnsignedExpr(node.args[0]) ? "%u" : "%d");
+            }
             builder.CreateCall(sprintfF, {bufPtr, fmt, val});
             return bufPtr;
         }

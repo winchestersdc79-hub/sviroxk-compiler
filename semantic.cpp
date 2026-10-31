@@ -434,23 +434,46 @@ private:
                       std::to_string(builtin->second.first) + " аргументов, получено " +
                       std::to_string(node.args.size()));
             }
+            std::vector<std::string> argumentTypes;
             for (size_t index = 0; index < node.args.size(); ++index) {
                 const Node& arg = node.args[index];
                 std::string type = expression(arg);
-                if (node.varName == "rep") {
-                    if (type != "str" && type != "<error>")
-                        error(arg, "аргумент " + std::to_string(index + 1) + " rep должен иметь тип str");
-                } else if (!isInteger(type) && type != "f32" && type != "f64" &&
-                           type != "char" && type != "str" && type != "<error>") {
+                argumentTypes.push_back(type);
+                const bool expectsString = node.varName == "ar" || node.varName == "ser" ||
+                    node.varName == "rep";
+                if (expectsString && type != "str" && type != "<error>")
+                    error(arg, "аргумент " + std::to_string(index + 1) + " функции '" +
+                          node.varName + "' должен иметь тип str");
+                else if (!expectsString && node.varName != "str" &&
+                         !isInteger(type) && type != "f32" && type != "f64" &&
+                         type != "char" && type != "<error>")
                     error(arg, "недопустимый тип аргумента функции '" + node.varName + "'");
-                }
             }
             if (node.varName == "ser") return "bool";
-            if (node.varName == "ar" || node.varName == "ran" || node.varName == "abs" || node.varName == "pow") return "i32";
+            if (node.varName == "ar" || node.varName == "ran") return "i32";
             if (node.varName == "str") return "str";
             if (node.varName == "rep") return "ptr";
-            if (node.varName == "sqrt" || node.varName == "flo" || node.varName == "cel" || node.varName == "ron") return "i32";
-            if (!node.args.empty()) return expression(node.args[0]);
+            if (node.varName == "sqrt" || node.varName == "pow" ||
+                node.varName == "flo" || node.varName == "cel" || node.varName == "ron") {
+                for (const std::string& type : argumentTypes)
+                    if (type == "f32" || type == "f64") return "f64";
+                for (const std::string& type : argumentTypes)
+                    if (type == "i64" || type == "u64") return "i64";
+                return "i32";
+            }
+            if (node.varName == "abs" || node.varName == "max" || node.varName == "min") {
+                std::string result = argumentTypes.empty() ? "i32" : argumentTypes.front();
+                for (size_t index = 1; index < argumentTypes.size(); ++index) {
+                    const std::string& type = argumentTypes[index];
+                    if (type == "f64" || result == "f64") result = "f64";
+                    else if (type == "f32" || result == "f32") result = "f32";
+                    else if (type == "i64" || type == "u64") result = type;
+                    else if ((type == "i32" || type == "u32") &&
+                             result != "i64" && result != "u64") result = type;
+                }
+                return result;
+            }
+            if (!argumentTypes.empty()) return argumentTypes[0];
             return "i32";
         }
         auto function = functions_.find(node.varName);
