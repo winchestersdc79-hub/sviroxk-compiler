@@ -1,0 +1,7 @@
+/* literals and escapes */
+int hex = 0x2a;
+int binary = 0b101010;
+char apostrophe = '\'';
+print(hex + binary);
+print(apostrophe);
+print("a\0b");

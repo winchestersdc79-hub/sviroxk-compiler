@@ -32,6 +32,35 @@ std::vector<Token> tokenize(const std::string& code) {
             }
             continue;
         }
+        if (code[i] == '/' && i + 1 < (int)code.size() && code[i + 1] == '*') {
+            const int commentLine = line;
+            const int commentColumn = column;
+            i += 2;
+            column += 2;
+            bool closed = false;
+            while (i < static_cast<int>(code.size())) {
+                if (code[i] == '*' && i + 1 < static_cast<int>(code.size()) && code[i + 1] == '/') {
+                    i += 2;
+                    column += 2;
+                    closed = true;
+                    break;
+                }
+                if (code[i] == '\n') {
+                    ++line;
+                    column = 1;
+                    ++i;
+                } else {
+                    ++column;
+                    ++i;
+                }
+            }
+            if (!closed) {
+                std::cerr << "Ошибка " << commentLine << ':' << commentColumn
+                          << ": незакрытый блочный комментарий" << std::endl;
+                std::exit(1);
+            }
+            continue;
+        }
 
         int tokLine = line;
         int tokCol = column;
@@ -115,6 +144,38 @@ std::vector<Token> tokenize(const std::string& code) {
         if (isdigit(static_cast<unsigned char>(code[i]))) {
             std::string num;
             bool malformed = false;
+            if (code[i] == '0' && i + 1 < static_cast<int>(code.size()) &&
+                (code[i + 1] == 'x' || code[i + 1] == 'X' || code[i + 1] == 'b' || code[i + 1] == 'B')) {
+                const char prefix = static_cast<char>(tolower(static_cast<unsigned char>(code[i + 1])));
+                num += code[i++]; ++column;
+                num += code[i++]; ++column;
+                const int digitsStart = i;
+                while (i < static_cast<int>(code.size())) {
+                    const unsigned char ch = static_cast<unsigned char>(code[i]);
+                    const bool valid = prefix == 'x' ? isxdigit(ch) : (ch == '0' || ch == '1');
+                    if (!valid) break;
+                    num += code[i++]; ++column;
+                }
+                if (i == digitsStart ||
+                    (i < static_cast<int>(code.size()) &&
+                     isalnum(static_cast<unsigned char>(code[i])))) malformed = true;
+                if (malformed) {
+                    std::cerr << "Ошибка " << tokLine << ':' << tokCol
+                              << ": некорректный числовой литерал '" << num << "'" << std::endl;
+                    std::exit(1);
+                }
+                try {
+                    const unsigned long long value = std::stoull(num.substr(2), nullptr,
+                        prefix == 'x' ? 16 : 2);
+                    num = std::to_string(value);
+                } catch (const std::exception&) {
+                    std::cerr << "Ошибка " << tokLine << ':' << tokCol
+                              << ": числовой литерал вне диапазона u64" << std::endl;
+                    std::exit(1);
+                }
+                add(NUMBER, num, tokLine, tokCol);
+                continue;
+            }
             while (i < static_cast<int>(code.size()) &&
                    isdigit(static_cast<unsigned char>(code[i]))) {
                 num += code[i++];
@@ -171,7 +232,30 @@ std::vector<Token> tokenize(const std::string& code) {
                           << ": ожидался один символ между одинарными кавычками" << std::endl;
                 std::exit(1);
             }
-            unsigned char charVal = static_cast<unsigned char>(code[i++]);
+            unsigned char charVal;
+            if (code[i] == '\\') {
+                ++i; ++column;
+                if (i >= static_cast<int>(code.size()) || code[i] == '\n') {
+                    std::cerr << "Ошибка " << tokLine << ':' << tokCol
+                              << ": незавершённая escape-последовательность в символьном литерале" << std::endl;
+                    std::exit(1);
+                }
+                switch (code[i]) {
+                    case '0': charVal = 0; break;
+                    case '\'': charVal = '\''; break;
+                    case 'n': charVal = '\n'; break;
+                    case 'r': charVal = '\r'; break;
+                    case 't': charVal = '\t'; break;
+                    case '\\': charVal = '\\'; break;
+                    default:
+                        std::cerr << "Ошибка " << tokLine << ':' << tokCol
+                                  << ": неизвестная escape-последовательность в символьном литерале" << std::endl;
+                        std::exit(1);
+                }
+            } else {
+                charVal = static_cast<unsigned char>(code[i]);
+            }
+            ++i;
             ++column;
             if (i >= static_cast<int>(code.size()) || code[i] != '\'') {
                 std::cerr << "Ошибка " << tokLine << ':' << tokCol
@@ -204,6 +288,8 @@ std::vector<Token> tokenize(const std::string& code) {
                         case 'n': str += '\n'; break;
                         case 'r': str += '\r'; break;
                         case 't': str += '\t'; break;
+                        case '0': str += '\0'; break;
+                        case '\'': str += '\''; break;
                         case '"': str += '"'; break;
                         case '\\': str += '\\'; break;
                         default:
