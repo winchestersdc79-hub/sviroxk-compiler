@@ -1,0 +1,6 @@
+svi rox[] lor values = [3, 4, 5];
+int total = 0;
+for value in values {
+    total += value;
+}
+print(total);

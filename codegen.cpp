@@ -1134,6 +1134,51 @@ void CodeGen::genNode(const Node& node) {
         breakBlock = savedBreak;
         continueBlock = savedContinue;
     }
+    else if (node.type == NODE_FOR_EACH) {
+        if (!arrays.count(node.left->value) || !arrayLengths.count(node.left->value))
+            return;
+        llvm::AllocaInst* array = arrays[node.left->value];
+        const unsigned length = arrayLengths[node.left->value];
+        llvm::ArrayType* arrayType = llvm::dyn_cast<llvm::ArrayType>(array->getAllocatedType());
+        if (!arrayType) return;
+        llvm::Type* elementType = arrayType->getElementType();
+        llvm::Function* function = builder.GetInsertBlock()->getParent();
+        llvm::AllocaInst* index = builder.CreateAlloca(builder.getInt32Ty(), nullptr, "foreach_index");
+        builder.CreateStore(builder.getInt32(0), index);
+        llvm::AllocaInst* element = builder.CreateAlloca(elementType, nullptr, node.varName);
+        llvm::BasicBlock* conditionBlock = llvm::BasicBlock::Create(context, "foreach_cond", function);
+        llvm::BasicBlock* bodyBlock = llvm::BasicBlock::Create(context, "foreach_body", function);
+        llvm::BasicBlock* stepBlock = llvm::BasicBlock::Create(context, "foreach_step", function);
+        llvm::BasicBlock* afterBlock = llvm::BasicBlock::Create(context, "foreach_after", function);
+        const ScopeSnapshot parentScope = saveScope();
+        const auto savedBreak = breakBlock;
+        const auto savedContinue = continueBlock;
+        vars[node.varName] = element;
+        unsignedVars[node.varName] = false;
+        charVars[node.varName] = false;
+        integerWidths[node.varName] = elementType->isIntegerTy() ? elementType->getIntegerBitWidth() : 32;
+        breakBlock = afterBlock;
+        continueBlock = stepBlock;
+        builder.CreateBr(conditionBlock);
+        builder.SetInsertPoint(conditionBlock);
+        llvm::Value* current = builder.CreateLoad(builder.getInt32Ty(), index);
+        builder.CreateCondBr(builder.CreateICmpULT(current, builder.getInt32(length)), bodyBlock, afterBlock);
+        builder.SetInsertPoint(bodyBlock);
+        llvm::Value* address = builder.CreateInBoundsGEP(
+            arrayType, array, {builder.getInt32(0), current});
+        llvm::Value* value = builder.CreateLoad(elementType, address);
+        builder.CreateStore(value, element);
+        for (const Node& child : node.children) genNode(child);
+        if (!builder.GetInsertBlock()->hasTerminator()) builder.CreateBr(stepBlock);
+        builder.SetInsertPoint(stepBlock);
+        current = builder.CreateLoad(builder.getInt32Ty(), index);
+        builder.CreateStore(builder.CreateAdd(current, builder.getInt32(1)), index);
+        builder.CreateBr(conditionBlock);
+        builder.SetInsertPoint(afterBlock);
+        restoreScope(parentScope);
+        breakBlock = savedBreak;
+        continueBlock = savedContinue;
+    }
     else if (node.type == NODE_FOR_RANGE) {
         llvm::Value* start = genExpr(*node.left);
         llvm::Value* end = genExpr(*node.right);

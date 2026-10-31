@@ -486,7 +486,20 @@ std::vector<Node> parseBlock() {
     std::vector<Node> nodes;
     while (peek().type != RBRACE && peek().type != END) {
         if (peek().type == SEMICOLON) { consume(); continue; }
-        nodes.push_back(parseOne());
+        const unsigned errorsBefore = parseErrorCount;
+        const int positionBefore = pos;
+        Node statement = parseOne();
+        if (parseErrorCount == errorsBefore) {
+            nodes.push_back(std::move(statement));
+        } else {
+            if (recovering) {
+                pos = lastErrorPos;
+                synchronizeStatement();
+                if (pos == positionBefore && peek().type != RBRACE && peek().type != END)
+                    consume();
+            }
+            recovering = false;
+        }
     }
     return nodes;
 }

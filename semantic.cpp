@@ -846,6 +846,21 @@ private:
             --loopDepth_;
             break;
         }
+        case NODE_FOR_EACH: {
+            const std::string collectionType = expression(*node.left);
+            if (collectionType.rfind("array<", 0) != 0) {
+                error(*node.left, "for-each сейчас требует статический массив с известной длиной");
+                break;
+            }
+            const std::string elementType = collectionType.substr(6, collectionType.size() - 7);
+            scopes_.emplace_back();
+            declare(node.varName, elementType, node);
+            ++loopDepth_;
+            checkStatements(node.children);
+            --loopDepth_;
+            scopes_.pop_back();
+            break;
+        }
         case NODE_FOR_RANGE: {
             const std::string startType = expression(*node.left);
             const std::string endType = expression(*node.right);
