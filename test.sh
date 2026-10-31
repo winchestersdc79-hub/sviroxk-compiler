@@ -60,6 +60,19 @@ sources=(
     "docs/conformance/basic.svx"
     "docs/conformance/operators.svx"
     "examples/short_circuit.svx"
+    "examples/v1_bitwise.svx"
+    "examples/v1_compound_assignment.svx"
+    "examples/v1_const.svx"
+    "examples/v1_else_if.svx"
+    "examples/v1_for_array.svx"
+    "examples/v1_for_range.svx"
+    "examples/v1_increment.svx"
+    "examples/v1_integer_division.svx"
+    "examples/v1_let_inference.svx"
+    "examples/v1_loop.svx"
+    "examples/v1_power.svx"
+    "examples/v1_ternary.svx"
+    "examples/v1_while.svx"
 )
 
 for source in "${sources[@]}"; do
@@ -199,6 +212,97 @@ for source in "${sources[@]}"; do
             cat "$work/output.txt" >&2
             exit 1
         fi
+    elif [[ "$source" == "examples/v1_bitwise.svx" ]]; then
+        expected=$'15\n30\n-8\n15'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: bitwise operator result mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_compound_assignment.svx" ]]; then
+        expected=$'5'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: compound assignment result mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_const.svx" ]]; then
+        expected=$'42'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: const declaration result mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_else_if.svx" ]]; then
+        expected=$'3'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: else-if branch selection mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_for_array.svx" ]]; then
+        expected=$'12'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: static-array iteration mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_for_range.svx" ]]; then
+        expected=$'13'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: range-for iteration mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_increment.svx" ]]; then
+        expected=$'2'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: postfix increment/decrement mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_integer_division.svx" ]]; then
+        expected=$'3\n-3'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: integer division result mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_let_inference.svx" ]]; then
+        expected=$'42'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: inferred let type mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_loop.svx" ]]; then
+        expected=$'3'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: loop/break result mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_power.svx" ]]; then
+        expected=$'8\n8.000000'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: exponentiation result mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_ternary.svx" ]]; then
+        expected=$'10'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: ternary result mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/v1_while.svx" ]]; then
+        expected=$'4'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: while loop result mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
     elif [[ "$source" == "docs/conformance/basic.svx" ]]; then
         expected=$'42'
         if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
@@ -291,10 +395,24 @@ expect_compile_error() {
         cat "$work/error.log" >&2
         exit 1
     fi
+    if [[ "$name" == "diagnostic-source-caret" ]] &&
+       ! grep -Fq '^' "$work/error.log"; then
+        echo "FAIL: '$name' did not show a caret diagnostic" >&2
+        cat "$work/error.log" >&2
+        exit 1
+    fi
+    if [[ "$name" == "multiple-syntax-errors" ]] &&
+       [[ $(grep -c 'error\[syntax\]' "$work/error.log") -ne 2 ]]; then
+        echo "FAIL: '$name' did not report both independent syntax errors" >&2
+        cat "$work/error.log" >&2
+        exit 1
+    fi
     echo "PASS: invalid input '$name' reported an error without crashing"
 }
 
 expect_compile_error "missing-expression" 'let value: int = ;'
+expect_compile_error "diagnostic-source-caret" 'int count = "wrong";'
+expect_compile_error "multiple-syntax-errors" 'int first = ; int second = ;'
 expect_compile_error "missing-function-parameter" 'fn add(int left,) { return left; }'
 expect_compile_error "unexpected-character" 'print(1 ! 2);'
 expect_compile_error "unterminated-string" 'print("unfinished);'

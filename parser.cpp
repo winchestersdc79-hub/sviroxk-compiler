@@ -44,6 +44,12 @@ static void failAt(const Token& token, const std::string& message) {
     if (!recovering) {
         ++parseErrorCount;
         lastErrorPos = pos;
+        if (pos > 0) {
+            const Token& previous = gtokens[static_cast<size_t>(pos - 1)];
+            if (previous.file == token.file && previous.line == token.line &&
+                previous.column == token.column && previous.type == token.type)
+                lastErrorPos = pos - 1;
+        }
         sc::reportDiagnostic(token.file, token.line, token.column, "syntax", message);
     }
     recovering = true;
@@ -501,7 +507,6 @@ std::vector<Node> parseBlock() {
     while (peek().type != RBRACE && peek().type != END) {
         if (peek().type == SEMICOLON) { consume(); continue; }
         const unsigned errorsBefore = parseErrorCount;
-        const int positionBefore = pos;
         Node statement = parseOne();
         if (parseErrorCount == errorsBefore) {
             nodes.push_back(std::move(statement));
@@ -509,8 +514,6 @@ std::vector<Node> parseBlock() {
             if (recovering) {
                 pos = lastErrorPos;
                 synchronizeStatement();
-                if (pos == positionBefore && peek().type != RBRACE && peek().type != END)
-                    consume();
             }
             recovering = false;
         }
@@ -1071,6 +1074,7 @@ Node parse(const std::vector<Token>& tokens) {
     program.type = NODE_PROGRAM;
     program.arena = nodeArena;
     while (peek().type != END) {
+        if (peek().type == SEMICOLON) { consume(); continue; }
         if (peek().type == IMP) {
             consume();
             Node node; node.type = NODE_IMPORT;
@@ -1079,15 +1083,12 @@ Node parse(const std::vector<Token>& tokens) {
             program.children.push_back(node);
         } else {
             const unsigned errorsBefore = parseErrorCount;
-            const int positionBefore = pos;
             Node declaration = parseOne();
             if (parseErrorCount == errorsBefore) {
                 program.children.push_back(std::move(declaration));
             } else if (recovering) {
                 pos = lastErrorPos;
                 synchronizeStatement();
-                if (pos == positionBefore && peek().type != END)
-                    consume();
             }
         }
     }
