@@ -337,8 +337,19 @@ Node parseUnary() {
 }
 
 // * и / — умножение и деление (+ и - в parseAdd). Символы те же: + - * /
-Node parseMul() {
+static Node makeBinary(Node left, const Token& op, Node right);
+
+Node parsePower() {
     Node left = parseUnary();
+    if (peek().type == POWER) {
+        Token op = consume();
+        left = makeBinary(left, op, parsePower());
+    }
+    return left;
+}
+
+Node parseMul() {
+    Node left = parsePower();
     while (peek().type == STAR || peek().type == SLASH || peek().type == PERCENT) {
         std::string op = consume().value;
         Node* b = makeNode();
@@ -347,7 +358,7 @@ Node parseMul() {
         b->line = gtokens[static_cast<size_t>(pos - 1)].line;
         b->column = gtokens[static_cast<size_t>(pos - 1)].column;
         b->left = makeNode(left);
-        b->right = makeNode(parseUnary());
+        b->right = makeNode(parsePower());
         left = *b;
     }
     return left;

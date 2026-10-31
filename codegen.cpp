@@ -403,6 +403,38 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             return result;
         }
         llvm::Value* R = genExpr(*node.right);
+        if (node.op == "**") {
+            const bool floatingOperands = L->getType()->isFloatingPointTy() ||
+                R->getType()->isFloatingPointTy();
+            const bool unsignedResult = isUnsignedExpr(*node.left) && isUnsignedExpr(*node.right);
+            const unsigned resultWidth = std::max(integerWidth(*node.left), integerWidth(*node.right));
+            llvm::Value* leftValue = L;
+            llvm::Value* rightValue = R;
+            if (leftValue->getType()->isIntegerTy())
+                leftValue = isUnsignedExpr(*node.left)
+                    ? builder.CreateUIToFP(leftValue, builder.getDoubleTy())
+                    : builder.CreateSIToFP(leftValue, builder.getDoubleTy());
+            else if (leftValue->getType()->isFloatTy())
+                leftValue = builder.CreateFPExt(leftValue, builder.getDoubleTy());
+            if (rightValue->getType()->isIntegerTy())
+                rightValue = isUnsignedExpr(*node.right)
+                    ? builder.CreateUIToFP(rightValue, builder.getDoubleTy())
+                    : builder.CreateSIToFP(rightValue, builder.getDoubleTy());
+            else if (rightValue->getType()->isFloatTy())
+                rightValue = builder.CreateFPExt(rightValue, builder.getDoubleTy());
+            llvm::FunctionType* functionType = llvm::FunctionType::get(
+                builder.getDoubleTy(), {builder.getDoubleTy(), builder.getDoubleTy()}, false);
+            llvm::Function* powerFunction = module.getFunction("pow");
+            if (!powerFunction) powerFunction = llvm::Function::Create(
+                functionType, llvm::Function::ExternalLinkage, "pow", module);
+            llvm::Value* result = builder.CreateCall(powerFunction, {leftValue, rightValue});
+            if (floatingOperands)
+                return (L->getType()->isDoubleTy() || R->getType()->isDoubleTy())
+                    ? result : builder.CreateFPTrunc(result, builder.getFloatTy());
+            llvm::Type* integerResult = builder.getIntNTy(std::max(32U, resultWidth));
+            return unsignedResult ? builder.CreateFPToUI(result, integerResult)
+                                  : builder.CreateFPToSI(result, integerResult);
+        }
         bool isFloat = L->getType()->isFloatingPointTy() || R->getType()->isFloatingPointTy();
         if (isFloat) {
             llvm::Type* common = L->getType()->isDoubleTy() || R->getType()->isDoubleTy()

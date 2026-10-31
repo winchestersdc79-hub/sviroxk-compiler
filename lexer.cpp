@@ -385,7 +385,9 @@ std::vector<Token> tokenize(const std::string& code) {
                 } else add(MINUS, "-", tokLine, tokCol);
                 break;
             case '*':
-                if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
+                if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '*') {
+                    add(POWER, "**", tokLine, tokCol); ++i; ++column;
+                } else if (i + 1 < static_cast<int>(code.size()) && code[i + 1] == '=') {
                     add(STAR_EQ, "*=", tokLine, tokCol); ++i; ++column;
                 } else add(STAR, "*", tokLine, tokCol);
                 break;
