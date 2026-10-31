@@ -49,7 +49,9 @@ public:
                     size_t separator = param.find(':');
                     fn.parameters.push_back(normalize(param.substr(0, separator)));
                 }
-                if (functions_.count(node.varName))
+                if (isBuiltinFunction(node.varName))
+                    error(node, "имя функции '" + node.varName + "' зарезервировано встроенной функцией");
+                else if (functions_.count(node.varName))
                     error(node, "повторное объявление функции '" + node.varName + "'");
                 else
                     functions_[node.varName] = fn;
@@ -78,6 +80,14 @@ private:
     std::map<std::string, std::string> structFields_;
     std::vector<std::string> returnTypes_;
     unsigned loopDepth_ = 0;
+
+    static bool isBuiltinFunction(const std::string& name) {
+        static const std::set<std::string> names = {
+            "sqrt", "abs", "pow", "max", "min", "flo", "cel", "ron",
+            "ran", "ar", "ser", "rep", "str"
+        };
+        return names.count(name) != 0;
+    }
 
     static std::string normalize(const std::string& type) {
         if (type == "int" || type == "i32" || type == "rox") return "i32";

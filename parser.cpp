@@ -524,13 +524,16 @@ Node parseOne() {
         if (peek().type == VOID_T) {
             consume();
             node.varType = "void";
-        } else if (isTypeToken(peek().type) && peek(1).type == IDENTIFIER &&
+        } else if (isTypeToken(peek().type) && isNameToken(peek(1).type) &&
                    peek(2).type == LPAREN) {
             Token returnType = consume();
             if (!isTypeName(returnType.value))
                 failAt(returnType, "неизвестный тип результата '" + returnType.value + "'");
             node.varType = canonicalType(returnType.value);
         }
+        Token functionName = peek();
+        if (!isNameToken(functionName.type))
+            failAt(functionName, "ожидалось имя функции");
         node.varName = consume().value;
         expect(LPAREN);
         while (peek().type != RPAREN && peek().type != END) {
