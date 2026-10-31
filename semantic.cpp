@@ -532,6 +532,28 @@ private:
         return false;
     }
 
+    bool alwaysTerminates(const Node& node) const {
+        if (node.type == NODE_RETURN || node.type == NODE_BREAK ||
+            node.type == NODE_CONTINUE) return true;
+        if (node.type == NODE_IF && !node.elseChildren.empty())
+            return alwaysTerminates(node.children) && alwaysTerminates(node.elseChildren);
+        return false;
+    }
+
+    bool alwaysTerminates(const std::vector<Node>& statements) const {
+        return !statements.empty() && alwaysTerminates(statements.back());
+    }
+
+    void checkStatements(const std::vector<Node>& statements) {
+        bool terminated = false;
+        for (const Node& statement : statements) {
+            if (terminated)
+                error(statement, "недостижимый код после return/break/continue");
+            checkNode(statement);
+            terminated = terminated || alwaysTerminates(statement);
+        }
+    }
+
     void checkFunction(const Node& node) {
         scopes_.emplace_back();
         returnTypes_.push_back(normalize(node.varType));
@@ -542,7 +564,7 @@ private:
             if (!knownType(type)) error(node, "неизвестный тип параметра '" + type + "'");
             declare(name, type, node);
         }
-        for (const Node& statement : node.children) checkNode(statement);
+        checkStatements(node.children);
         if (normalize(node.varType) != "void" && !alwaysReturns(node.children))
             error(node, "функция должна возвращать значение на всех путях выполнения");
         returnTypes_.pop_back();
@@ -721,10 +743,10 @@ private:
             if (condition != "bool" && !isInteger(condition) && condition != "<error>")
                 error(*node.left, "условие if должно быть bool или int");
             scopes_.emplace_back();
-            for (const Node& child : node.children) checkNode(child);
+            checkStatements(node.children);
             scopes_.pop_back();
             scopes_.emplace_back();
-            for (const Node& child : node.elseChildren) checkNode(child);
+            checkStatements(node.elseChildren);
             scopes_.pop_back();
             break;
         }
@@ -733,7 +755,7 @@ private:
             if (!isInteger(count) && count != "<error>") error(*node.left, "число итераций должно иметь целочисленный тип");
             ++loopDepth_;
             scopes_.emplace_back();
-            for (const Node& child : node.children) checkNode(child);
+            checkStatements(node.children);
             scopes_.pop_back();
             --loopDepth_;
             break;

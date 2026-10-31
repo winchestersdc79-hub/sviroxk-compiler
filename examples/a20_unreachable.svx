@@ -1,0 +1,16 @@
+fn void dead_after_return() {
+    return;
+    print(2);
+}
+fn void dead_after_break() {
+    cert ceh (2) {
+        brk;
+        print(3);
+    }
+}
+fn void dead_after_continue() {
+    cert ceh (2) {
+        cont;
+        print(4);
+    }
+}
