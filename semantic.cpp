@@ -752,8 +752,10 @@ private:
         case NODE_CONTINUE:
             if (loopDepth_ == 0) error(node, "оператор цикла находится вне цикла");
             break;
-        case NODE_STRUCT_DEF:
         case NODE_FUNC_DEF:
+            error(node, "вложенные определения функций пока не поддерживаются");
+            break;
+        case NODE_STRUCT_DEF:
         case NODE_IMPORT:
             break;
         case NODE_DELETE: {
