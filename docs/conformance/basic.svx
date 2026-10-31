@@ -1,0 +1,6 @@
+fn int add(int left, int right) {
+    return left + right;
+}
+
+let answer: int = add(20, 22);
+print(answer);

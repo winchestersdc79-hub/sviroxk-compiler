@@ -22,5 +22,5 @@ done
 "$CXX" "$BUILD_DIR/main.o" "$BUILD_DIR/lexer.o" \
     "$BUILD_DIR/parser.o" "$BUILD_DIR/semantic.o" "$BUILD_DIR/codegen.o" \
     $LLVM_LDFLAGS "${EXTRA_CXXFLAGS[@]}" -fexceptions -o sc
-chmod +x sc run.sh build.sh test.sh 2>/dev/null || true
+chmod +x sc run.sh build.sh test.sh test-conformance.sh 2>/dev/null || true
 echo "Сборка SC завершена"

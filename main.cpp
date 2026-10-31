@@ -11,6 +11,17 @@
 
 namespace fs = std::filesystem;
 
+#ifndef SC_VERSION
+#define SC_VERSION "0.3.0"
+#endif
+
+static void printHelp(std::ostream& out) {
+    out << "SC compiler " << SC_VERSION << '\n'
+        << "Usage: sc <source.svx>\n"
+        << "       sc --version\n"
+        << "       sc --help\n";
+}
+
 static void appendModuleTokens(const fs::path& sourcePath,
                                std::vector<Token>& output,
                                std::set<fs::path>& active,
@@ -70,8 +81,18 @@ static void appendModuleTokens(const fs::path& sourcePath,
 }
 
 int main(int argc, char* argv[]) {
-    if (argc < 2) {
-        std::cerr << "Использование: sc <файл.svx>" << std::endl;
+    if (argc == 2 && (std::string(argv[1]) == "--version" ||
+                      std::string(argv[1]) == "-V")) {
+        std::cout << "SC compiler " << SC_VERSION << '\n';
+        return 0;
+    }
+    if (argc == 2 && (std::string(argv[1]) == "--help" ||
+                      std::string(argv[1]) == "-h")) {
+        printHelp(std::cout);
+        return 0;
+    }
+    if (argc != 2 || argv[1][0] == '-') {
+        printHelp(std::cerr);
         return 1;
     }
 

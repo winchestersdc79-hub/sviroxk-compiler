@@ -4,6 +4,11 @@ SC находится на ранней стадии разработки. На�
 
 ## Сделано
 
+- Версия компилятора `0.3.0` (экспериментальная); `sc --version`, `sc --help` и отказ на неизвестный флаг покрыты тестом.
+- Добавлена `docs/language.md` с EBNF-фрагментом только реализованного подмножества, политикой совместимости и conformance fixtures; полная спецификация ещё не завершена.
+- Добавлен GitHub Actions workflow: warning-clean build, conformance/regression suite, ASan/UBSan. Локально обе конфигурации проходят; удалённый Actions run после push ещё требует проверки.
+- Deprecated warnings пока не поддерживаются; legacy syntax остаётся рабочим и не помечен deprecated.
+
 - Generated ARM64 binaries, object files, LLVM/assembly output and empty build log removed from Git tracking; `.gitignore` excludes local build products. `test.svx` retained as an actual source regression fixture; stale `test` executable and unreferenced `test.txt` removed.
 - Parser AST nodes use a parse-lifetime owning arena instead of leaked raw `new` allocations; leak-detection sanitizer suite passes.
 - Legacy `rep` now replaces the first occurrence into a dynamically sized heap buffer; callers release it with `del`. Long input, match/no-match and sanitizer cases pass; OOM/size overflow currently abort.

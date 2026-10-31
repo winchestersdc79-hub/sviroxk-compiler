@@ -12,7 +12,24 @@ for tool in timeout llvm-as llc clang; do
 done
 
 ./build.sh
+./test-conformance.sh
 SC_BIN="$PWD/sc"
+
+version_output=$("$SC_BIN" --version)
+if [[ "$version_output" != "SC compiler 0.3.0" ]]; then
+    echo "FAIL: --version returned unexpected text: $version_output" >&2
+    exit 1
+fi
+help_output=$("$SC_BIN" --help)
+if ! grep -Fq 'Usage: sc <source.svx>' <<< "$help_output"; then
+    echo "FAIL: --help is missing source usage" >&2
+    exit 1
+fi
+if "$SC_BIN" --unknown >/dev/null 2>"${TMPDIR:-/tmp}/sc-unknown-option.log"; then
+    echo "FAIL: unknown CLI option returned success" >&2
+    exit 1
+fi
+echo "PASS: CLI version/help/unknown-option contract"
 TMP_DIR=$(mktemp -d)
 trap 'rm -rf "$TMP_DIR"' EXIT
 
@@ -39,6 +56,8 @@ sources=(
     "examples/casts.svx"
     "examples/operators.svx"
     "examples/string_replace.svx"
+    "docs/conformance/basic.svx"
+    "docs/conformance/operators.svx"
     "examples/short_circuit.svx"
 )
 
@@ -169,6 +188,20 @@ for source in "${sources[@]}"; do
         expected=$'short circuit passed'
         if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
             echo "FAIL: logical operators evaluated skipped operands" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "docs/conformance/basic.svx" ]]; then
+        expected=$'42'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: documented basic conformance example mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "docs/conformance/operators.svx" ]]; then
+        expected=$'7'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: documented operator conformance example mismatch" >&2
             cat "$work/output.txt" >&2
             exit 1
         fi
