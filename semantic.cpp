@@ -184,9 +184,13 @@ private:
         switch (node.type) {
         case NODE_NUMBER: {
             const bool floatingLiteral = node.value.find_first_of(".eE") != std::string::npos;
-            const std::string literalType = !node.varType.empty()
+            std::string literalType = !node.varType.empty()
                 ? normalize(node.varType)
                 : floatingLiteral ? "f64" : "i32";
+            if (node.varType.empty() && !floatingLiteral) {
+                if (literalFits("i32", node.value)) literalType = "i32";
+                else literalType = "i64";
+            }
             if ((literalType == "f32" || literalType == "f64" || isInteger(literalType)) &&
                 !literalFits(literalType, node.value)) {
                 error(node, "числовой литерал вне диапазона типа '" + typeName(literalType) + "'");
@@ -299,6 +303,19 @@ private:
         }
     }
 
+    static bool isNumericLiteral(const Node& node) {
+        return node.type == NODE_NUMBER && node.varType.empty();
+    }
+
+    bool fitsNumericLiteral(const Node& node, const std::string& target) const {
+        if (!isNumericLiteral(node)) return false;
+        const bool floatingLiteral = node.value.find_first_of(".eE") != std::string::npos;
+        if (floatingLiteral && isInteger(target)) return false;
+        if (target == "i8" || target == "i16" || target == "u8" || target == "u16")
+            return false;
+        return literalFits(target, node.value);
+    }
+
     std::string binary(const Node& node) {
         std::string left = expression(*node.left);
         if (node.op == "!") {
@@ -308,6 +325,14 @@ private:
             return "bool";
         }
         std::string right = node.right ? expression(*node.right) : std::string("<error>");
+        const bool narrowUnsignedPromotion = isInteger(left) && isInteger(right) &&
+            left[0] != right[0] &&
+            static_cast<unsigned>(std::stoi(left.substr(1))) < 32 &&
+            static_cast<unsigned>(std::stoi(right.substr(1))) < 32;
+        if (!narrowUnsignedPromotion && node.right && fitsNumericLiteral(*node.left, right))
+            left = right;
+        else if (!narrowUnsignedPromotion && node.right && fitsNumericLiteral(*node.right, left))
+            right = left;
         if (left == "<error>" || right == "<error>") return "<error>";
         if (node.op == "&&" || node.op == "||") {
             if ((left != "bool" && !isInteger(left)) ||
@@ -480,8 +505,12 @@ private:
         switch (node.type) {
         case NODE_VAR_DECL: {
             if (!knownType(node.varType)) error(node, "неизвестный тип переменной '" + node.varType + "'");
-            std::string actual = expression(*node.left);
             const std::string declaredType = normalize(node.varType);
+            const bool contextualIntegerLiteral = node.left->type == NODE_NUMBER &&
+                node.left->varType.empty() &&
+                node.left->value.find_first_of(".eE") == std::string::npos &&
+                isInteger(declaredType);
+            std::string actual = contextualIntegerLiteral ? declaredType : expression(*node.left);
             const bool numericLiteral = node.left->type == NODE_NUMBER &&
                 (isInteger(declaredType) || declaredType == "f32" || declaredType == "f64");
             const bool literalInRange = numericLiteral && literalFits(declaredType, node.left->value);

@@ -1,0 +1,10 @@
+uint unsigned_value = 4;
+byte byte_value = 6;
+float ratio = 2.5;
+long wide_value = 3000000000;
+ulong unsigned_wide = 4000000000;
+print(unsigned_value + 1);
+print(byte_value + 1);
+print(ratio * 2.5);
+print(wide_value);
+print(unsigned_wide);
