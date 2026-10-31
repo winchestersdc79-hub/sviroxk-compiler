@@ -184,10 +184,16 @@ Node parsePrimary() {
     }
     // atk — открыть файл
     if (peek().type == ATK) {
-        consume();
+        Token token = consume();
         Node left; left.type = NODE_FILE_OPEN;
+        left.line = token.line;
+        left.column = token.column;
         expect(LPAREN);
-        left.value = consume().value; // имя файла
+        left.left = makeNode(parseExpr());
+        if (peek().type == COMMA) {
+            consume();
+            left.right = makeNode(parseExpr());
+        }
         expect(RPAREN);
         return left;
     }

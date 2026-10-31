@@ -280,8 +280,8 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
         llvm::Function* fopenF = module.getFunction("fopen");
         if (!fopenF) fopenF = llvm::Function::Create(fopenType,
             llvm::Function::ExternalLinkage, "fopen", module);
-        llvm::Value* fname = getStringPtr(node.value);
-        llvm::Value* mode = getStringPtr("w");
+        llvm::Value* fname = node.left ? genExpr(*node.left) : getStringPtr("");
+        llvm::Value* mode = node.right ? genExpr(*node.right) : getStringPtr("w");
         return builder.CreateCall(fopenF, {fname, mode});
     }
     if (node.type == NODE_INPUT && node.varType == "cos") {

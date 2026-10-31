@@ -1,0 +1,4 @@
+str path = "sc-a9.tmp";
+file output = atk(path, "a");
+zak(output);
+print(1);

@@ -290,8 +290,17 @@ private:
         }
         case NODE_INPUT:
             return node.varType == "cos" ? "str" : "i32";
-        case NODE_FILE_OPEN:
+        case NODE_FILE_OPEN: {
+            const std::string pathType = node.left ? expression(*node.left) : "<error>";
+            if (pathType != "str" && pathType != "<error>")
+                error(node, "имя файла должно иметь тип str");
+            if (node.right) {
+                const std::string modeType = expression(*node.right);
+                if (modeType != "str" && modeType != "<error>")
+                    error(*node.right, "режим открытия файла должен иметь тип str");
+            }
             return "file";
+        }
         case NODE_FILE_READ:
             if (!lookup(node.varName)) error(node, "неизвестный файл '" + node.varName + "'");
             return "str";
