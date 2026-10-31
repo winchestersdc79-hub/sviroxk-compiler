@@ -55,7 +55,7 @@ static Token expect(TokenType type) {
 
 static bool isTypeName(const std::string& type) {
     return type == "rox" || type == "dor" || type == "cos" || type == "bue" ||
-           type == "int" || type == "float" || type == "string" || type == "bool" ||
+           type == "int" || type == "float" || type == "string" || type == "str" || type == "bool" ||
            type == "uint" || type == "short" || type == "ushort" || type == "long" ||
            type == "ulong" || type == "byte" || type == "double" || type == "char" ||
            type == "i8" || type == "i16" || type == "i32" || type == "i64" ||

@@ -1,0 +1,2 @@
+str text = "ok";
+print(text);
