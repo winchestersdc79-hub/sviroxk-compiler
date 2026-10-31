@@ -102,9 +102,10 @@ int main(int argc, char* argv[]) {
     std::set<fs::path> activeImports;
     std::set<fs::path> loadedImports;
     appendModuleTokens(fs::absolute(argv[1]), allTokens, activeImports, loadedImports);
-    allTokens.push_back({END, "", 1, 1});
+    allTokens.push_back({END, "", 1, 1, fs::absolute(argv[1]).string()});
 
     Node node = parse(allTokens);
+    if (parseHadErrors()) return 1;
     if (!checkSemantics(node, fs::absolute(argv[1]).string())) return 2;
 
     CodeGen codegen;

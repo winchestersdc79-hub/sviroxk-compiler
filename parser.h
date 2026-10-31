@@ -73,6 +73,7 @@ struct Node {
 };
 
 Node parse(const std::vector<Token>& tokens);
+bool parseHadErrors();
 bool checkSemantics(const Node& program, const std::string& filename);
 
 #endif

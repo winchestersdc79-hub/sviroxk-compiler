@@ -7,6 +7,9 @@
 #include <utility>
 
 static int pos = 0;
+static unsigned parseErrorCount = 0;
+static int lastErrorPos = 0;
+static bool recovering = false;
 static std::vector<Token> gtokens;
 static std::shared_ptr<std::vector<std::unique_ptr<Node>>> nodeArena =
     std::make_shared<std::vector<std::unique_ptr<Node>>>();
@@ -20,7 +23,7 @@ static Node* makeNode(Args&&... args) {
 }
 
 static Token peek(size_t offset = 0) {
-    if (gtokens.empty()) return {END, "", 1, 1};
+    if (gtokens.empty()) return {END, "", 1, 1, {}};
     size_t index = static_cast<size_t>(pos) + offset;
     if (index >= gtokens.size()) return gtokens.back();
     return gtokens[index];
@@ -37,9 +40,20 @@ static std::string tokenDescription(const Token& token) {
     return "'" + token.value + "'";
 }
 
-[[noreturn]] static void failAt(const Token& token, const std::string& message) {
-    sc::reportDiagnostic(token.file, token.line, token.column, "syntax", message);
-    std::exit(1);
+static void failAt(const Token& token, const std::string& message) {
+    if (!recovering) {
+        ++parseErrorCount;
+        lastErrorPos = pos;
+        sc::reportDiagnostic(token.file, token.line, token.column, "syntax", message);
+    }
+    recovering = true;
+}
+
+static void synchronizeStatement() {
+    while (peek().type != END && peek().type != RBRACE && peek().type != SEMICOLON)
+        consume();
+    if (peek().type == SEMICOLON) consume();
+    recovering = false;
 }
 
 static Token expect(TokenType type, const std::string& expected) {
@@ -952,6 +966,20 @@ Node parseOne() {
         if (!isNameToken(name.type)) failAt(name, "ожидалось имя счётчика for");
         node.varName = consume().value;
         expect(IN_T, "'in'");
+        if (peek().type == IDENTIFIER && peek(1).type == LBRACE) {
+            node.type = NODE_FOR_EACH;
+            Token arrayToken = consume();
+            node.left = makeNode();
+            node.left->type = NODE_IDENTIFIER;
+            node.left->value = arrayToken.value;
+            node.left->line = arrayToken.line;
+            node.left->column = arrayToken.column;
+            node.left->file = arrayToken.file;
+            expect(LBRACE);
+            node.children = parseBlock();
+            expect(RBRACE);
+            return node;
+        }
         node.left = makeNode(parseAdd());
         if (peek().type == RANGE_EQ) {
             consume();
@@ -1029,12 +1057,16 @@ Node parseOne() {
     }
 
     failAt(peek(), "неизвестная конструкция, начинается с " + tokenDescription(peek()));
+    return Node{};
 }
 
 Node parse(const std::vector<Token>& tokens) {
     nodeArena = std::make_shared<std::vector<std::unique_ptr<Node>>>();
     gtokens = tokens;
     pos = 0;
+    parseErrorCount = 0;
+    lastErrorPos = 0;
+    recovering = false;
     Node program;
     program.type = NODE_PROGRAM;
     program.arena = nodeArena;
@@ -1046,8 +1078,22 @@ Node parse(const std::vector<Token>& tokens) {
             expect(SEMICOLON);
             program.children.push_back(node);
         } else {
-            program.children.push_back(parseOne());
+            const unsigned errorsBefore = parseErrorCount;
+            const int positionBefore = pos;
+            Node declaration = parseOne();
+            if (parseErrorCount == errorsBefore) {
+                program.children.push_back(std::move(declaration));
+            } else if (recovering) {
+                pos = lastErrorPos;
+                synchronizeStatement();
+                if (pos == positionBefore && peek().type != END)
+                    consume();
+            }
         }
     }
     return program;
+}
+
+bool parseHadErrors() {
+    return parseErrorCount != 0;
 }
