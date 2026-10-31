@@ -775,9 +775,24 @@ private:
             if (condition != "bool" && !isInteger(condition) && condition != "<error>") error(*node.left, "условие цикла должно быть bool или int");
             ++loopDepth_;
             scopes_.emplace_back();
-            for (const Node& child : node.children) checkNode(child);
+            checkStatements(node.children);
             scopes_.pop_back();
             --loopDepth_;
+            break;
+        }
+        case NODE_FOR_RANGE: {
+            const std::string startType = expression(*node.left);
+            const std::string endType = expression(*node.right);
+            if (!isInteger(startType) && startType != "<error>")
+                error(*node.left, "граница for должна иметь целочисленный тип");
+            if (!isInteger(endType) && endType != "<error>")
+                error(*node.right, "граница for должна иметь целочисленный тип");
+            scopes_.emplace_back();
+            declare(node.varName, startType == "<error>" ? "i32" : startType, node);
+            ++loopDepth_;
+            checkStatements(node.children);
+            --loopDepth_;
+            scopes_.pop_back();
             break;
         }
         case NODE_BREAK:

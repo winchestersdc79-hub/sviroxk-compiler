@@ -1041,6 +1041,56 @@ void CodeGen::genNode(const Node& node) {
         breakBlock = savedBreak;
         continueBlock = savedContinue;
     }
+    else if (node.type == NODE_FOR_RANGE) {
+        llvm::Value* start = genExpr(*node.left);
+        llvm::Value* end = genExpr(*node.right);
+        llvm::Type* iteratorType = start->getType();
+        if (iteratorType != end->getType()) {
+            llvm::Type* common = iteratorType->getIntegerBitWidth() >= end->getType()->getIntegerBitWidth()
+                ? iteratorType : end->getType();
+            start = castTo(start, common, isUnsignedExpr(*node.left));
+            end = castTo(end, common, isUnsignedExpr(*node.right));
+            iteratorType = common;
+        }
+        llvm::AllocaInst* iterator = builder.CreateAlloca(iteratorType, nullptr, node.varName);
+        builder.CreateStore(start, iterator);
+        llvm::Function* function = builder.GetInsertBlock()->getParent();
+        llvm::BasicBlock* conditionBlock = llvm::BasicBlock::Create(context, "for_cond", function);
+        llvm::BasicBlock* bodyBlock = llvm::BasicBlock::Create(context, "for_body", function);
+        llvm::BasicBlock* stepBlock = llvm::BasicBlock::Create(context, "for_step", function);
+        llvm::BasicBlock* afterBlock = llvm::BasicBlock::Create(context, "for_after", function);
+        const ScopeSnapshot parentScope = saveScope();
+        const auto savedBreak = breakBlock;
+        const auto savedContinue = continueBlock;
+        vars[node.varName] = iterator;
+        unsignedVars[node.varName] = isUnsignedExpr(*node.left);
+        integerWidths[node.varName] = iteratorType->getIntegerBitWidth();
+        breakBlock = afterBlock;
+        continueBlock = stepBlock;
+        builder.CreateBr(conditionBlock);
+        builder.SetInsertPoint(conditionBlock);
+        llvm::Value* current = builder.CreateLoad(iteratorType, iterator);
+        llvm::Value* condition;
+        if (isUnsignedExpr(*node.left))
+            condition = node.inclusiveRange ? builder.CreateICmpULE(current, end)
+                                            : builder.CreateICmpULT(current, end);
+        else
+            condition = node.inclusiveRange ? builder.CreateICmpSLE(current, end)
+                                            : builder.CreateICmpSLT(current, end);
+        builder.CreateCondBr(condition, bodyBlock, afterBlock);
+        builder.SetInsertPoint(bodyBlock);
+        for (const Node& child : node.children) genNode(child);
+        if (!builder.GetInsertBlock()->hasTerminator()) builder.CreateBr(stepBlock);
+        builder.SetInsertPoint(stepBlock);
+        current = builder.CreateLoad(iteratorType, iterator);
+        llvm::Value* next = builder.CreateAdd(current, llvm::ConstantInt::get(iteratorType, 1));
+        builder.CreateStore(next, iterator);
+        builder.CreateBr(conditionBlock);
+        builder.SetInsertPoint(afterBlock);
+        restoreScope(parentScope);
+        breakBlock = savedBreak;
+        continueBlock = savedContinue;
+    }
     else if (node.type == NODE_LOOP_W) {
         llvm::Function* func = builder.GetInsertBlock()->getParent();
         llvm::BasicBlock* condBlock =

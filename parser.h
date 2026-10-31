@@ -44,6 +44,7 @@ enum NodeType {
     NODE_FILE_READ,
     NODE_FILE_CLOSE,
     NODE_LOOP_W,
+    NODE_FOR_RANGE,
 };
 
 struct Node {
@@ -52,6 +53,7 @@ struct Node {
     mutable std::string varType;
     std::string varName;
     bool isConst = false;
+    bool inclusiveRange = false;
     std::string op;
     int line = 1;
     int column = 1;

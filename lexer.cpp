@@ -75,6 +75,8 @@ std::vector<Token> tokenize(const std::string& code) {
             }
             if      (word == "let")  add(LET,  word, tokLine, tokCol);
             else if (word == "const") add(CONST_T, word, tokLine, tokCol);
+            else if (word == "for") add(FOR_T, word, tokLine, tokCol);
+            else if (word == "in") add(IN_T, word, tokLine, tokCol);
             else if (word == "svi")  add(SVI,  word, tokLine, tokCol);
             else if (word == "lor")  add(LOR,  word, tokLine, tokCol);
             else if (word == "int")  add(ROX,  word, tokLine, tokCol);
@@ -181,6 +183,21 @@ std::vector<Token> tokenize(const std::string& code) {
                    isdigit(static_cast<unsigned char>(code[i]))) {
                 num += code[i++];
                 ++column;
+            }
+            if (i + 1 < static_cast<int>(code.size()) && code[i] == '.' && code[i + 1] == '.') {
+                add(NUMBER, num, tokLine, tokCol);
+                const int rangeLine = line;
+                const int rangeColumn = column;
+                i += 2;
+                column += 2;
+                if (i < static_cast<int>(code.size()) && code[i] == '=') {
+                    add(RANGE_EQ, "..=", rangeLine, rangeColumn);
+                    ++i;
+                    ++column;
+                } else {
+                    add(RANGE, "..", rangeLine, rangeColumn);
+                }
+                continue;
             }
             if (i < static_cast<int>(code.size()) && code[i] == '.') {
                 num += code[i++];

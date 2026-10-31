@@ -764,6 +764,29 @@ Node parseOne() {
         expect(SEMICOLON);
         return node;
     }
+    // Range loop: for index in start..end { ... } / start..=end.
+    if (peek().type == FOR_T) {
+        Token forToken = consume();
+        Node node; node.type = NODE_FOR_RANGE;
+        node.line = forToken.line;
+        node.column = forToken.column;
+        Token name = peek();
+        if (!isNameToken(name.type)) failAt(name, "ожидалось имя счётчика for");
+        node.varName = consume().value;
+        expect(IN_T, "'in'");
+        node.left = makeNode(parseAdd());
+        if (peek().type == RANGE_EQ) {
+            consume();
+            node.inclusiveRange = true;
+        } else {
+            expect(RANGE, "'..' или '..='");
+        }
+        node.right = makeNode(parseExpr());
+        expect(LBRACE);
+        node.children = parseBlock();
+        expect(RBRACE);
+        return node;
+    }
     // cert
     if (peek().type == CERT) {
         Node node;
