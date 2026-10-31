@@ -136,7 +136,10 @@ Node parsePrimary() {
         peek().type == STR) {
         Node left;
         left.type = NODE_FUNC_CALL;
-        left.varName = consume().value;
+        Token builtinToken = consume();
+        left.varName = builtinToken.value;
+        left.line = builtinToken.line;
+        left.column = builtinToken.column;
         expect(LPAREN);
         while (peek().type != RPAREN && peek().type != END) {
             left.args.push_back(parseExpr());
@@ -251,6 +254,8 @@ Node parsePrimary() {
             consume();
             Node* access = makeNode();
             access->type = NODE_ARRAY_ACCESS;
+            access->line = t.line;
+            access->column = t.column;
             access->varName = t.value;
             access->left = makeNode(parseExpr());
             expect(RBRACKET);
@@ -276,16 +281,20 @@ Node parseUnary() {
         return node;
     }
     if (peek().type == MINUS) {
-        consume();
+        Token minus = consume();
         if (peek().type == NUMBER) {
             Token num = consume();
             Node n;
             n.type = NODE_NUMBER;
+            n.line = minus.line;
+            n.column = minus.column;
             n.value = "-" + num.value;
             return n;
         }
         Node n;
         n.type = NODE_BINOP;
+        n.line = minus.line;
+        n.column = minus.column;
         n.op = "-";
         n.left = makeNode();
         n.left->type = NODE_NUMBER;
@@ -316,10 +325,12 @@ Node parseMul() {
 Node parseAdd() {
     Node left = parseMul();
     while (peek().type == PLUS || peek().type == MINUS) {
-        std::string op = consume().value;
+        Token op = consume();
         Node* b = makeNode();
         b->type = NODE_BINOP;
-        b->op = op;
+        b->line = op.line;
+        b->column = op.column;
+        b->op = op.value;
         b->left = makeNode(left);
         b->right = makeNode(parseMul());
         left = *b;

@@ -515,7 +515,7 @@ private:
                 (isInteger(declaredType) || declaredType == "f32" || declaredType == "f64");
             const bool literalInRange = numericLiteral && literalFits(declaredType, node.left->value);
             if (numericLiteral && !literalInRange) {
-                error(node, "числовой литерал вне диапазона типа '" + typeName(declaredType) + "'");
+                error(*node.left, "числовой литерал вне диапазона типа '" + typeName(declaredType) + "'");
             } else if (actual != "<error>" && !compatible(node.varType, actual) && !literalInRange) {
                 error(node, "переменная '" + node.varName + "' имеет тип '" +
                       typeName(declaredType) + "', но инициализируется значением типа '" +
