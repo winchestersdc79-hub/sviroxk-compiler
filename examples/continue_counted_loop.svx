@@ -1,0 +1,6 @@
+let total: int = 0;
+cert ceh (5) {
+    cont;
+    total = total + 1;
+}
+print(total);

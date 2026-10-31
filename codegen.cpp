@@ -633,6 +633,8 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
 }
 
 void CodeGen::genNode(const Node& node) {
+    if (builder.GetInsertBlock() && builder.GetInsertBlock()->hasTerminator())
+        return;
     if (node.type == NODE_SLOV) {
         if (node.left && node.left->type == NODE_STRING) {
             llvm::Value* str = getStringPtr(node.left->value);
@@ -945,10 +947,12 @@ void CodeGen::genNode(const Node& node) {
             llvm::BasicBlock::Create(context, "after", func);
         llvm::BasicBlock* bodyBlock =
             llvm::BasicBlock::Create(context, "body", func);
+        llvm::BasicBlock* stepBlock =
+            llvm::BasicBlock::Create(context, "step", func);
         auto savedBreak = breakBlock;
         auto savedContinue = continueBlock;
         breakBlock = afterBlock;
-        continueBlock = loopBlock;
+        continueBlock = stepBlock;
         builder.CreateBr(loopBlock);
         builder.SetInsertPoint(loopBlock);
         llvm::Value* cur = builder.CreateLoad(builder.getInt32Ty(), i);
@@ -956,11 +960,12 @@ void CodeGen::genNode(const Node& node) {
         builder.CreateCondBr(cond, bodyBlock, afterBlock);
         builder.SetInsertPoint(bodyBlock);
         for (const Node& n : node.children) genNode(n);
-        if (!builder.GetInsertBlock()->hasTerminator()) {
-            llvm::Value* next = builder.CreateAdd(cur, builder.getInt32(1));
-            builder.CreateStore(next, i);
-            builder.CreateBr(loopBlock);
-        }
+        if (!builder.GetInsertBlock()->hasTerminator())
+            builder.CreateBr(stepBlock);
+        builder.SetInsertPoint(stepBlock);
+        llvm::Value* next = builder.CreateAdd(cur, builder.getInt32(1));
+        builder.CreateStore(next, i);
+        builder.CreateBr(loopBlock);
         builder.SetInsertPoint(afterBlock);
         breakBlock = savedBreak;
         continueBlock = savedContinue;
