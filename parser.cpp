@@ -64,6 +64,17 @@ static bool isTypeName(const std::string& type) {
            type == "chr" || type == "rox64";
 }
 
+static bool isBuiltinToken(TokenType t) {
+    return t == SQRT || t == ABS || t == POW || t == MAX || t == MIN ||
+           t == FLO || t == CEL || t == RON || t == RAN || t == AR ||
+           t == SER || t == REP || t == STR || t == DEL || t == PRO ||
+           t == TIP || t == FILE_T || t == PTR;
+}
+
+static bool isNameToken(TokenType t) {
+    return t == IDENTIFIER || isBuiltinToken(t);
+}
+
 static bool isTypeToken(TokenType t) {
     return t == ROX || t == DOR || t == COS || t == BUE || t == PTR ||
            t == FILE_T || t == CHR || t == ROX64 || t == FIXED_TYPE || t == IDENTIFIER;
@@ -127,13 +138,7 @@ Node parsePrimary() {
         return left;
     }
     // математика
-    if (peek().type == SQRT || peek().type == ABS ||
-        peek().type == POW  || peek().type == MAX ||
-        peek().type == MIN  || peek().type == AR  ||
-        peek().type == FLO  || peek().type == CEL ||
-        peek().type == RON  || peek().type == RAN ||
-        peek().type == SER  || peek().type == REP ||
-        peek().type == STR) {
+    if (isBuiltinToken(peek().type) && peek(1).type == LPAREN) {
         Node left;
         left.type = NODE_FUNC_CALL;
         Token builtinToken = consume();
@@ -235,7 +240,7 @@ Node parsePrimary() {
         }
         expect(RPAREN);
     }
-    else if (t.type == IDENTIFIER) {
+    else if (t.type == IDENTIFIER || isBuiltinToken(t.type)) {
         left.type = NODE_IDENTIFIER; left.value = t.value;
         if (peek().type == LPAREN) {
             left.type = NODE_FUNC_CALL;
@@ -404,7 +409,10 @@ Node parseOne() {
         Node node; node.type = NODE_VAR_DECL;
         node.line = declarationToken.line;
         node.column = declarationToken.column;
-        node.varName = expect(IDENTIFIER).value;
+        Token nameToken = peek();
+        if (!isNameToken(nameToken.type))
+            failAt(nameToken, "ожидалось имя переменной");
+        node.varName = consume().value;
         expect(COLON);
         Token typeToken = consume();
         if (!isTypeName(typeToken.value))
@@ -434,7 +442,7 @@ Node parseOne() {
                 expect(LBRACE);
                 while (peek().type != RBRACE && peek().type != END) {
                     Node init;
-                    if (peek().type == IDENTIFIER && peek(1).type == EQUALS) {
+                    if (isNameToken(peek().type) && peek(1).type == EQUALS) {
                         init.varName = consume().value;
                         consume();
                         init.left = makeNode(parseExpr());
@@ -526,7 +534,10 @@ Node parseOne() {
             if (!isTypeName(typeToken.value))
                 failAt(typeToken, "неизвестный тип параметра '" + typeToken.value + "'");
             std::string ptype = canonicalType(typeToken.value);
-            std::string pname = expect(IDENTIFIER, "имя параметра").value;
+            Token parameterName = peek();
+            if (!isNameToken(parameterName.type))
+                failAt(parameterName, "ожидалось имя параметра");
+            std::string pname = consume().value;
             node.params.push_back(ptype + ":" + pname);
             if (peek().type == COMMA) {
                 consume();
@@ -652,7 +663,7 @@ Node parseOne() {
         return node;
     }
     // p.health = 10 — поле структуры
-    if (peek().type == IDENTIFIER && peek(1).type == DOT &&
+    if (isNameToken(peek().type) && peek(1).type == DOT &&
         peek(3).type == EQUALS) {
         std::string inst = consume().value;
         consume();
@@ -666,7 +677,7 @@ Node parseOne() {
         return node;
     }
     // arr[0] = 10 — присваивание элемента массива
-    if (peek().type == IDENTIFIER && peek(1).type == LBRACKET) {
+    if (isNameToken(peek().type) && peek(1).type == LBRACKET) {
         Node node; node.type = NODE_ARRAY_ASSIGN;
         node.varName = consume().value;
         consume(); // [
@@ -678,7 +689,7 @@ Node parseOne() {
         return node;
     }
     // вызов функции как отдельный оператор
-    if (peek().type == IDENTIFIER && peek(1).type == LPAREN) {
+    if (isNameToken(peek().type) && peek(1).type == LPAREN) {
         Node node; node.type = NODE_FUNC_CALL;
         Token name = consume();
         node.varName = name.value;
@@ -703,14 +714,17 @@ Node parseOne() {
         Node node; node.type = NODE_VAR_DECL;
         node.line = typeToken.line; node.column = typeToken.column;
         node.varType = canonicalType(typeToken.value);
-        node.varName = expect(IDENTIFIER, "имя переменной").value;
+        Token variableName = peek();
+        if (!isNameToken(variableName.type))
+            failAt(variableName, "ожидалось имя переменной");
+        node.varName = consume().value;
         expect(EQUALS, "'='");
         node.left = makeNode(parseExpr());
         expect(SEMICOLON, "';'");
         return node;
     }
     // присваивание
-    if (peek().type == IDENTIFIER && peek(1).type == EQUALS) {
+    if (isNameToken(peek().type) && peek(1).type == EQUALS) {
         Node node; node.type = NODE_ASSIGN;
         node.varName = consume().value;
         consume(); // =
