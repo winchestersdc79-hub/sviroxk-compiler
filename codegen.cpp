@@ -797,7 +797,7 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
                 ? funcReturnTypes[name] : "rox";
             return castTo(ret, svType(rt));
         }
-        return builder.getInt32(0);
+        codegenFailure(node, "неизвестная функция '" + name + "' при генерации LLVM");
     }
     codegenFailure(node, "неподдерживаемый узел выражения");
 }
@@ -873,6 +873,22 @@ void CodeGen::genNode(const Node& node) {
             val = castTo(val, ty, isUnsignedExpr(*node.left));
             builder.CreateStore(val, alloca);
         }
+    }
+    else if (node.type == NODE_STRUCT_FIELD_ASSIGN) {
+        auto object = vars.find(node.varName);
+        auto structName = structTypesByVariable.find(node.varName);
+        if (object == vars.end() || structName == structTypesByVariable.end())
+            codegenFailure(node, "нет aggregate storage структуры '" + node.varName + "'");
+        auto fieldIndex = structFieldIndices[structName->second].find(node.op);
+        if (fieldIndex == structFieldIndices[structName->second].end())
+            codegenFailure(node, "неизвестное поле структуры '" + node.varName + "." + node.op + "'");
+        llvm::Type* aggregateType = object->second->getAllocatedType();
+        const unsigned index = fieldIndex->second;
+        llvm::Type* fieldType = aggregateType->getStructElementType(index);
+        llvm::Value* value = genExpr(*node.left);
+        value = castTo(value, fieldType, isUnsignedExpr(*node.left));
+        llvm::Value* address = builder.CreateStructGEP(aggregateType, object->second, index);
+        builder.CreateStore(value, address);
     }
     else if (node.type == NODE_ARRAY_ASSIGN) {
         if (node.left && node.right) {

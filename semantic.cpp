@@ -759,6 +759,38 @@ private:
                 error(node, "нельзя присвоить '" + typeName(actual) + "' значению типа '" + typeName(expected) + "'");
             break;
         }
+        case NODE_STRUCT_FIELD_ASSIGN: {
+            const Symbol* object = lookup(node.varName);
+            if (!object) {
+                error(node, "неизвестная структура '" + node.varName + "'");
+                expression(*node.left);
+                break;
+            }
+            auto structure = structs_.find(object->type);
+            if (structure == structs_.end()) {
+                error(node, "тип '" + typeName(object->type) + "' не имеет полей");
+                expression(*node.left);
+                break;
+            }
+            auto field = std::find_if(structure->second->children.begin(),
+                                      structure->second->children.end(),
+                [&](const Node& candidate) { return candidate.varName == node.op; });
+            if (field == structure->second->children.end()) {
+                error(node, "у структуры '" + node.varName + "' нет поля '" + node.op + "'");
+                expression(*node.left);
+                break;
+            }
+            if (object->isConst) {
+                error(node, "нельзя изменять поле константной структуры '" + node.varName + "'");
+                expression(*node.left);
+                break;
+            }
+            const std::string actual = expression(*node.left);
+            if (actual != "<error>" && !compatible(field->varType, actual))
+                error(*node.left, "поле ожидает тип '" + typeName(normalize(field->varType)) +
+                      "', получен '" + typeName(actual) + "'");
+            break;
+        }
         case NODE_ARRAY_ASSIGN: {
             const Symbol* array = lookup(node.varName);
             if (!array) error(node, "неизвестный массив '" + node.varName + "'");
