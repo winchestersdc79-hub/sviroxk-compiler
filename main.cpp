@@ -110,6 +110,12 @@ int main(int argc, char* argv[]) {
 
     CodeGen codegen;
     codegen.generate(node);
+    std::string verifierDiagnostic;
+    if (!codegen.verify(verifierDiagnostic)) {
+        std::cerr << "Ошибка: внутренняя ошибка компилятора — сгенерирован некорректный LLVM IR:\n"
+                  << verifierDiagnostic;
+        return 3;
+    }
     codegen.print();
 
     return 0;
