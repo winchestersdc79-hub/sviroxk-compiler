@@ -5,13 +5,14 @@
 ## P0 — корректность/безопасность
 - [ ] Убрать глобальное состояние parser и сделать AST ownership безопасным при копировании Node (arena пока локальный workaround).
 - [~] ASan/UBSan LeakSanitizer проверяет parser arena, heap result `rep` и static array bounds. Динамические pointer/file/memory safety cases требуют runtime metadata.
-- [ ] Исправить все compiler warnings под `-Wall -Wextra -Werror`.
+- [x] Исправить compiler warnings под `-Wall -Wextra -Werror`; строгая сборка проходит локально и в CI.
+- [x] Проверять LLVM module verifier до печати IR; некорректный IR возвращает internal diagnostic и exit code 3.
 - [~] Прямые numeric literals во всех expression contexts проверяются до codegen. Остаются checked casts для вычисляемых значений и точное signed/unsigned conversion semantics.
-- [ ] Bounds checks для доступных массивов; определить exit/diagnostic contract.
+- [~] Bounds checks для статических массивов проверены; dynamic arrays ещё не имеют length metadata.
 
 ## P1 — зрелость compiler
 - [x] Short-circuit evaluation для `&&`/`||` реализована через LLVM CFG; side-effect regression покрывает пропуск правого операнда.
-- [ ] Shared diagnostics с кодом, source excerpt/caret, recovery для нескольких parse errors.
+- [~] Shared diagnostics показывают source excerpt/caret; parser собирает несколько syntax errors с синхронизацией по `;`/`}`; lexer recovery и richer diagnostic codes ещё отсутствуют.
 - [ ] Проверка definite assignment и return analysis для вложенных control-flow.
 - [ ] Корректность LLVM IR при ранних return, вложенных циклах, break/continue.
 - [ ] Namespace modules, visibility, stable symbol resolution.

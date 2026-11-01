@@ -49,6 +49,7 @@ enum NodeType {
     NODE_LOOP,
     NODE_TERNARY,
     NODE_FOR_EACH,
+    NODE_STRUCT_FIELD_ASSIGN,
 };
 
 struct Node {

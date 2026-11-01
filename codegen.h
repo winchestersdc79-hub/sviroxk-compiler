@@ -17,6 +17,7 @@ class CodeGen {
         std::map<std::string, unsigned> integerWidths;
         std::map<std::string, llvm::AllocaInst*> arrays;
         std::map<std::string, unsigned> arrayLengths;
+        std::map<std::string, std::string> structTypesByVariable;
     };
 
     ScopeSnapshot saveScope() const;
@@ -42,6 +43,9 @@ public:
         Node defaultVal;
     };
     std::map<std::string, std::vector<StructField>> structDefs;
+    std::map<std::string, llvm::StructType*> llvmStructTypes;
+    std::map<std::string, std::map<std::string, unsigned>> structFieldIndices;
+    std::map<std::string, std::string> structTypesByVariable;
     llvm::BasicBlock* breakBlock = nullptr;
     llvm::BasicBlock* continueBlock = nullptr;
     llvm::Function* putsFunc = nullptr;
@@ -60,6 +64,7 @@ public:
     llvm::Value* genExpr(const Node& node);
     void genNode(const Node& node);
     void generate(const Node& program);
+    bool verify(std::string& diagnostic) const;
     void print();
 };
 

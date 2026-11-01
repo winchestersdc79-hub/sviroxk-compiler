@@ -73,6 +73,8 @@ sources=(
     "examples/v1_power.svx"
     "examples/v1_ternary.svx"
     "examples/v1_while.svx"
+    "examples/p0_unknown_backend_type.svx"
+    "examples/p0_struct_field_store.svx"
 )
 
 for source in "${sources[@]}"; do
@@ -300,6 +302,20 @@ for source in "${sources[@]}"; do
         expected=$'4'
         if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
             echo "FAIL: while loop result mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/p0_unknown_backend_type.svx" ]]; then
+        expected=$'1'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: struct aggregate field load/store mismatch" >&2
+            cat "$work/output.txt" >&2
+            exit 1
+        fi
+    elif [[ "$source" == "examples/p0_struct_field_store.svx" ]]; then
+        expected=$'9223372036854775806'
+        if [[ "$(cat "$work/output.txt")" != "$expected" ]]; then
+            echo "FAIL: struct aggregate i64 field store mismatch" >&2
             cat "$work/output.txt" >&2
             exit 1
         fi

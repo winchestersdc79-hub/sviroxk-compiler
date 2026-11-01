@@ -1,12 +1,19 @@
 #include "codegen.h"
 #include <llvm/Support/raw_ostream.h>
+#include <llvm/IR/Verifier.h>
 #include <iostream>
 #include <cstdint>
 #include <climits>
 #include <cstdlib>
 #include <cmath>
+#include <stdexcept>
 
 namespace {
+
+[[noreturn]] void codegenFailure(const Node& node, const std::string& message) {
+    throw std::logic_error(node.file + ":" + std::to_string(node.line) + ":" +
+                           std::to_string(node.column) + ": внутренняя ошибка codegen: " + message);
+}
 
 bool blockHasTerminator(const llvm::BasicBlock* block) {
     return block && !block->empty() && block->back().isTerminator();
@@ -15,7 +22,8 @@ bool blockHasTerminator(const llvm::BasicBlock* block) {
 } // namespace
 
 CodeGen::ScopeSnapshot CodeGen::saveScope() const {
-    return {vars, unsignedVars, charVars, constVars, integerWidths, arrays, arrayLengths};
+    return {vars, unsignedVars, charVars, constVars, integerWidths, arrays, arrayLengths,
+            structTypesByVariable};
 }
 
 void CodeGen::restoreScope(const ScopeSnapshot& scope) {
@@ -26,6 +34,7 @@ void CodeGen::restoreScope(const ScopeSnapshot& scope) {
     integerWidths = scope.integerWidths;
     arrays = scope.arrays;
     arrayLengths = scope.arrayLengths;
+    structTypesByVariable = scope.structTypesByVariable;
 }
 
 llvm::Value* CodeGen::getStringPtr(const std::string& str) {
@@ -44,7 +53,7 @@ llvm::Type* CodeGen::svType(const std::string& name) {
     if (name == "str" || name == "string" || name == "cos" || name == "ptr" || name == "file") return builder.getPtrTy();
     if (name == "bool" || name == "bue") return builder.getInt8Ty();
     if (name == "void") return builder.getVoidTy();
-    return builder.getInt32Ty();
+    throw std::logic_error("внутренняя ошибка codegen: неизвестный тип '" + name + "'");
 }
 
 llvm::Value* CodeGen::castTo(llvm::Value* val, llvm::Type* ty, bool sourceUnsigned) {
@@ -186,15 +195,18 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
     if (node.type == NODE_STRING)
         return getStringPtr(node.value);
     if (node.type == NODE_STRUCT_FIELD) {
-        std::string key = node.varName + "." + node.op;
-        llvm::AllocaInst* alloca = vars[key];
-        if (alloca) {
-            llvm::Type* ty = alloca->getAllocatedType();
-            if (ty->isPointerTy())
-                return builder.CreateLoad(builder.getPtrTy(), alloca);
-            return builder.CreateLoad(ty, alloca);
-        }
-        return builder.getInt32(0);
+        const std::string key = node.varName + "." + node.op;
+        auto object = vars.find(node.varName);
+        auto structName = structTypesByVariable.find(node.varName);
+        if (object == vars.end() || structName == structTypesByVariable.end() ||
+            !structFieldIndices[structName->second].count(node.op))
+            codegenFailure(node, "неизвестное поле структуры '" + key + "'");
+        const unsigned fieldIndex = structFieldIndices[structName->second].at(node.op);
+        llvm::Type* aggregateType = object->second->getAllocatedType();
+        if (!aggregateType->isStructTy())
+            codegenFailure(node, "storage структуры '" + node.varName + "' не является aggregate");
+        llvm::Value* address = builder.CreateStructGEP(aggregateType, object->second, fieldIndex);
+        return builder.CreateLoad(aggregateType->getStructElementType(fieldIndex), address);
     }
     if (node.type == NODE_IDENTIFIER) {
         llvm::AllocaInst* alloca = vars[node.value];
@@ -204,7 +216,7 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
                 return builder.CreateLoad(builder.getPtrTy(), alloca);
             return builder.CreateLoad(ty, alloca);
         }
-        return builder.getInt32(0);
+        codegenFailure(node, "неизвестная переменная '" + node.value + "'");
     }
     if (node.type == NODE_ARRAY_ACCESS) {
         if (vars.count(node.varName) &&
@@ -227,12 +239,12 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
                 at, arr, {builder.getInt32(0), idx});
             return builder.CreateLoad(builder.getInt32Ty(), gep);
         }
-        return builder.getInt32(0);
+        codegenFailure(node, "неизвестный массив '" + node.varName + "'");
     }
     if (node.type == NODE_ADDR) {
         llvm::AllocaInst* alloca = vars[node.varName];
         if (alloca) return alloca;
-        return builder.getInt32(0);
+        codegenFailure(node, "невозможно получить адрес неизвестной переменной '" + node.varName + "'");
     }
     if (node.type == NODE_DEREF) {
         llvm::AllocaInst* alloca = vars[node.varName];
@@ -240,7 +252,7 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             llvm::Value* ptr = builder.CreateLoad(builder.getPtrTy(), alloca);
             return builder.CreateLoad(builder.getInt32Ty(), ptr);
         }
-        return builder.getInt32(0);
+        codegenFailure(node, "неизвестный указатель '" + node.varName + "'");
     }
     if (node.type == NODE_DYN_ARRAY) {
         llvm::FunctionType* mallocType =
@@ -274,7 +286,7 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
             return isUnsignedExpr(*node.left)
                 ? builder.CreateZExt(val, target) : builder.CreateSExt(val, target);
         }
-        return val;
+        codegenFailure(node, "невозможно преобразовать значение к типу '" + node.varType + "'");
     }
     if (node.type == NODE_FILE_READ) {
         llvm::AllocaInst* fileAlloca = vars[node.varName];
@@ -785,9 +797,9 @@ llvm::Value* CodeGen::genExpr(const Node& node) {
                 ? funcReturnTypes[name] : "rox";
             return castTo(ret, svType(rt));
         }
-        return builder.getInt32(0);
+        codegenFailure(node, "неизвестная функция '" + name + "' при генерации LLVM");
     }
-    return builder.getInt32(0);
+    codegenFailure(node, "неподдерживаемый узел выражения");
 }
 
 void CodeGen::genNode(const Node& node) {
@@ -862,6 +874,22 @@ void CodeGen::genNode(const Node& node) {
             builder.CreateStore(val, alloca);
         }
     }
+    else if (node.type == NODE_STRUCT_FIELD_ASSIGN) {
+        auto object = vars.find(node.varName);
+        auto structName = structTypesByVariable.find(node.varName);
+        if (object == vars.end() || structName == structTypesByVariable.end())
+            codegenFailure(node, "нет aggregate storage структуры '" + node.varName + "'");
+        auto fieldIndex = structFieldIndices[structName->second].find(node.op);
+        if (fieldIndex == structFieldIndices[structName->second].end())
+            codegenFailure(node, "неизвестное поле структуры '" + node.varName + "." + node.op + "'");
+        llvm::Type* aggregateType = object->second->getAllocatedType();
+        const unsigned index = fieldIndex->second;
+        llvm::Type* fieldType = aggregateType->getStructElementType(index);
+        llvm::Value* value = genExpr(*node.left);
+        value = castTo(value, fieldType, isUnsignedExpr(*node.left));
+        llvm::Value* address = builder.CreateStructGEP(aggregateType, object->second, index);
+        builder.CreateStore(value, address);
+    }
     else if (node.type == NODE_ARRAY_ASSIGN) {
         if (node.left && node.right) {
             // динамический массив
@@ -933,6 +961,16 @@ void CodeGen::genNode(const Node& node) {
             fields.push_back(sf);
         }
         structDefs[node.varName] = fields;
+        std::vector<llvm::Type*> fieldTypes;
+        std::map<std::string, unsigned> fieldIndices;
+        for (size_t index = 0; index < fields.size(); ++index) {
+            fieldTypes.push_back(svType(fields[index].type));
+            fieldIndices[fields[index].name] = static_cast<unsigned>(index);
+        }
+        llvm::StructType* llvmType = llvm::StructType::create(context, node.varName);
+        llvmType->setBody(fieldTypes, false);
+        llvmStructTypes[node.varName] = llvmType;
+        structFieldIndices[node.varName] = std::move(fieldIndices);
     }
     else if (node.type == NODE_STRUCT_INSTANCE) {
         if (!structDefs.count(node.varType)) {
@@ -946,22 +984,27 @@ void CodeGen::genNode(const Node& node) {
             if (!c.varName.empty()) named[c.varName] = &c;
             else if (c.left) positional.push_back(&c);
         }
-        size_t pi = 0;
-        for (const StructField& f : fields) {
-            std::string full = node.varName + "." + f.name;
-            llvm::Type* ty = svType(f.type);
-            llvm::AllocaInst* alloca =
-                builder.CreateAlloca(ty, nullptr, full);
-            llvm::Value* val;
-            if (named.count(f.name))
-                val = genExpr(*named.at(f.name)->left);
-            else if (pi < positional.size())
-                val = genExpr(*positional[pi++]->left);
-            else
-                val = genExpr(f.defaultVal);
-            val = castTo(val, ty);
-            builder.CreateStore(val, alloca);
-            vars[full] = alloca;
+        llvm::StructType* aggregateType = llvmStructTypes[node.varType];
+        llvm::AllocaInst* object = builder.CreateAlloca(aggregateType, nullptr, node.varName);
+        vars[node.varName] = object;
+        structTypesByVariable[node.varName] = node.varType;
+        size_t positionalIndex = 0;
+        for (size_t index = 0; index < fields.size(); ++index) {
+            const StructField& field = fields[index];
+            const Node* initializer;
+            if (named.count(field.name)) {
+                initializer = named.at(field.name)->left;
+            } else if (positionalIndex < positional.size()) {
+                initializer = positional[positionalIndex++]->left;
+            } else {
+                initializer = &field.defaultVal;
+            }
+            llvm::Value* value = genExpr(*initializer);
+            llvm::Type* fieldType = aggregateType->getStructElementType(static_cast<unsigned>(index));
+            value = castTo(value, fieldType, isUnsignedExpr(*initializer));
+            llvm::Value* address = builder.CreateStructGEP(aggregateType, object,
+                                                            static_cast<unsigned>(index));
+            builder.CreateStore(value, address);
         }
     }
     else if (node.type == NODE_FUNC_DEF) {
@@ -978,6 +1021,7 @@ void CodeGen::genNode(const Node& node) {
         auto savedIntegerWidths = integerWidths;
         auto savedArrays = arrays;
         auto savedArrayLengths = arrayLengths;
+        auto savedStructTypesByVariable = structTypesByVariable;
         builder.SetInsertPoint(block);
         int idx = 0;
         for (auto& arg : func->args()) {
@@ -1020,6 +1064,7 @@ void CodeGen::genNode(const Node& node) {
         integerWidths = savedIntegerWidths;
         arrays = savedArrays;
         arrayLengths = savedArrayLengths;
+        structTypesByVariable = savedStructTypesByVariable;
         funcs[node.varName] = func;
     }
     else if (node.type == NODE_FUNC_CALL) {
@@ -1336,6 +1381,13 @@ void CodeGen::generate(const Node& program) {
         if (node.type != NODE_FUNC_DEF) genNode(node);
 
     builder.CreateRet(builder.getInt32(0));
+}
+
+bool CodeGen::verify(std::string& diagnostic) const {
+    llvm::raw_string_ostream output(diagnostic);
+    const bool invalid = llvm::verifyModule(module, &output);
+    output.flush();
+    return !invalid;
 }
 
 void CodeGen::print() {

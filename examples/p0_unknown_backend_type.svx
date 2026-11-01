@@ -1,0 +1,5 @@
+tip Item {
+    i64 id = 1;
+}
+svi tip Item lor item;
+print(item.id);
